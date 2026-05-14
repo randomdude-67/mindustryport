@@ -96,8 +96,23 @@
       log('[error] ' + msg + (detail ? '\n' + detail : ''));
     }
 
+    async function checkFiles() {
+      const paths = ['/index.list', '/jre/index.list', '/jre/bin/index.list', '/jre/bin/java'];
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { method: 'HEAD' });
+          log(`[file-check] ${p} → ${r.status}`);
+        } catch (e) {
+          log(`[file-check] ${p} → ERROR: ${e.message}`);
+        }
+      }
+    }
+
     async function main() {
       try {
+        setProgress(3, 'Checking files…');
+        await checkFiles();
+
         setProgress(5, 'Connecting to Linux image…');
         const cloudDevice = await CheerpX.CloudDevice.create(
           'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
