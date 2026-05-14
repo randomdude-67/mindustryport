@@ -10,6 +10,8 @@ jobs:
       contents: write   # needed to create/update the release
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install genext2fs
         run: sudo apt-get install -y genext2fs
 
