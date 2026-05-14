@@ -1,0 +1,49 @@
+name: Build JRE ext2 Image
+
+on:
+  workflow_dispatch:   # run manually from the Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create/update the release
+
+    steps:
+      - name: Install genext2fs
+        run: sudo apt-get install -y genext2fs
+
+      - name: Download JDK 17
+        run: |
+          curl -L -o jdk.tar.gz \
+            'https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse'
+          mkdir -p jdk
+          tar -xzf jdk.tar.gz -C jdk/ --strip-components=1
+          rm jdk.tar.gz
+
+      - name: Create minimal JRE with jlink
+        run: |
+          jdk/bin/jlink \
+            --module-path jdk/jmods \
+            --add-modules java.base,java.desktop,java.logging,java.net.http,java.sql,java.xml,java.naming,java.management,java.security.jgss,java.security.sasl,jdk.unsupported,jdk.zipfs,jdk.net,jdk.crypto.ec,jdk.localedata \
+            --no-header-files --no-man-pages --strip-debug --compress=2 \
+            --output jre
+          rm -rf jdk
+          echo "JRE size: $(du -sh jre)"
+
+      - name: Pack JRE into ext2 image
+        run: |
+          JRE_KB=$(du -sk jre | cut -f1)
+          EXT2_KB=$(( JRE_KB * 130 / 100 + 10240 ))
+          echo "Creating ${EXT2_KB} KB ext2 image..."
+          genext2fs -d jre -b "$EXT2_KB" -N 32768 jre.ext2
+          rm -rf jre
+          echo "jre.ext2 size: $(du -sh jre.ext2)"
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jre-v17
+          name: JRE 17 ext2 Image
+          body: Minimal Java 17 JRE packed as an ext2 image for CheerpX.
+          files: jre.ext2
