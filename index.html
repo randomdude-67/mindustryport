@@ -96,43 +96,32 @@
       log('[error] ' + msg + (detail ? '\n' + detail : ''));
     }
 
-    async function checkFiles() {
-      const paths = ['/index.list', '/jre/index.list', '/jre/bin/index.list', '/jre/bin/java'];
-      for (const p of paths) {
-        try {
-          const r = await fetch(p, { method: 'HEAD' });
-          log(`[file-check] ${p} → ${r.status}`);
-        } catch (e) {
-          log(`[file-check] ${p} → ERROR: ${e.message}`);
-        }
-      }
-    }
-
     async function main() {
       try {
-        setProgress(3, 'Checking files…');
-        await checkFiles();
-
         setProgress(5, 'Connecting to Linux image…');
         const cloudDevice = await CheerpX.CloudDevice.create(
           'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
         );
 
-        setProgress(15, 'Setting up persistent storage…');
-        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r4');
+        setProgress(12, 'Loading JRE image…');
+        const jreDevice = await CheerpX.CloudDevice.create(location.origin + '/jre.ext2');
+
+        setProgress(18, 'Setting up persistent storage…');
+        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r5');
         const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
 
-        setProgress(20, 'Mounting app files…');
+        setProgress(23, 'Mounting app files…');
         const webDevice  = await CheerpX.WebDevice.create('');
         const dataDevice = await CheerpX.DataDevice.create();
 
         setProgress(30, 'Starting Linux…');
         const cx = await CheerpX.Linux.create({
           mounts: [
-            { type: 'ext2', path: '/',    dev: overlayDevice },
-            { type: 'dir',  path: '/app', dev: webDevice     },
-            { type: 'dir',  path: '/data',dev: dataDevice    },
-            { type: 'devs', path: '/dev'                     },
+            { type: 'ext2', path: '/',       dev: overlayDevice },
+            { type: 'ext2', path: '/opt/jre', dev: jreDevice    },
+            { type: 'dir',  path: '/app',    dev: webDevice     },
+            { type: 'dir',  path: '/data',   dev: dataDevice    },
+            { type: 'devs', path: '/dev'                        },
           ],
         });
 
@@ -149,14 +138,17 @@
         loader.classList.add('fade-out');
         display.style.display = 'block';
 
-        log('[run] checking for system java...');
+        log('[run] launching Mindustry');
         await cx.run('/bin/bash', ['-c', `
-          echo "[java-check] which java: $(which java 2>&1)"
-          echo "[java-check] /usr/bin/java: $(ls -la /usr/bin/java 2>&1)"
-          echo "[java-check] find java bins:"
-          find /usr /opt -name 'java' -type f 2>/dev/null | head -5
-          echo "[java-check] dpkg java:"
-          dpkg -l | grep -i java | head -5 2>&1 || true
+          echo "[info] /opt/jre/bin/java: $(ls -la /opt/jre/bin/java 2>&1)"
+          mkdir -p /lib64
+          ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
+          echo "[info] ld symlink ok"
+          exec /opt/jre/bin/java \\
+            -Djava.version=25.0.0 \\
+            -Djava.specification.version=25 \\
+            -Djava.vm.version=25.0.0 \\
+            -jar /app/Mindustry.jar
         `], {
           env: [
             'HOME=/root',
@@ -164,7 +156,7 @@
             'SHELL=/bin/bash',
             'SDL_VIDEODRIVER=kmsdrm',
             'SDL_AUDIODRIVER=dummy',
-            'JAVA_HOME=/app/jre',
+            'JAVA_HOME=/opt/jre',
             'LANG=en_US.UTF-8',
           ],
           uid: 0,
