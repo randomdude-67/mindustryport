@@ -1,4 +1,12 @@
 {
   "buildCommand": "curl -L -o Mindustry.jar https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
 }
