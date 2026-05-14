@@ -56,6 +56,7 @@
     import sdlglNatives from './natives/sdlgl.js';
 
     const CHEERPJ_RUNTIME_VERSION = 17;
+    const MINDUSTRY_CLASSPATH = '/app/Mindustry.jar:/app/dependencies.jar';
     const statusEl = document.getElementById('status');
     const loader   = document.getElementById('loader');
     const logEl    = document.getElementById('log');
@@ -119,6 +120,8 @@
           status: 'none',
           natives,
           javaProperties: [
+            'os.arch=amd64',
+            'sun.arch.data.model=64',
             `java.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
             `java.specification.version=${CHEERPJ_RUNTIME_VERSION}`,
             `java.vm.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
@@ -126,13 +129,26 @@
           ],
         });
 
+        setStatus('Preparing Mindustry classpath…');
+        const boot = await cheerpjRunLibrary(MINDUSTRY_CLASSPATH);
+        const ArcNativesLoader = await boot.arc.util.ArcNativesLoader;
+        const SharedLibraryLoader = await boot.arc.util.SharedLibraryLoader;
+
+        // Arc's desktop bootstrap tries to extract native .so libraries.
+        // We disable the broad "arc" loader and pre-mark the SDL bridge as
+        // loaded so the Java side reaches our JS native implementations.
+        ArcNativesLoader.disableNativesLoading = true;
+        await SharedLibraryLoader.setLoaded('sdl-arc');
+        log('[bootstrap] Arc desktop native autoload disabled');
+        log('[bootstrap] sdl-arc marked as preloaded');
+
         setStatus('Starting Mindustry…');
         loader.classList.add('fade-out');
 
-        // cheerpjRunJar blocks until the JVM exits. Catch any thrown error
-        // so we can surface it instead of leaving the user with a black screen.
+        // Run with the full classpath. Mindustry's release now ships a
+        // separate dependencies.jar, so runJar() is not enough here.
         try {
-          await cheerpjRunJar('/app/Mindustry.jar');
+          await cheerpjRunMain('mindustry.desktop.DesktopLauncher', MINDUSTRY_CLASSPATH);
         } catch (err) {
           loader.classList.remove('fade-out');
           setStatus('JVM exited: ' + err);
