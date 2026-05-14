@@ -1,59 +1,53 @@
-// Service worker: caches Mindustry.jar from GitHub Releases on first load.
-// Subsequent visits serve from Cache API — no re-download needed.
+// Service worker: caches Mindustry.jar on first load, serves from cache after.
+// The JAR is baked into the Vercel deployment (downloaded at build time),
+// so the fetch is same-origin — no CORS issues.
 
 const CACHE = 'mindustry-jar-v157.4';
-const JAR_REMOTE = 'https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar';
-// CheerpJ strips /app/ prefix — actual HTTP request lands at /Mindustry.jar
-const JAR_LOCAL = '/Mindustry.jar';
+const JAR_LOCAL = '/Mindustry.jar'; // CheerpJ strips /app/ prefix
 
-// Activate immediately and take control of all clients
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('fetch', (event) => {
-  const path = new URL(event.request.url).pathname;
-
-  // Only intercept the Mindustry JAR request
-  if (path === JAR_LOCAL) {
-    event.respondWith(serveJar(event.request));
+  if (new URL(event.request.url).pathname === JAR_LOCAL) {
+    event.respondWith(serveJar());
   }
 });
 
-async function broadcast(data) {
-  const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-  for (const c of clients) c.postMessage(data);
+function broadcast(data) {
+  self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
+    .then(clients => clients.forEach(c => c.postMessage(data)));
 }
 
-async function serveJar(request) {
+async function serveJar() {
   const cache = await caches.open(CACHE);
 
-  // Return from cache if available
   const cached = await cache.match(JAR_LOCAL);
   if (cached) {
-    await broadcast({ type: 'sw-cached' });
+    broadcast({ type: 'sw-cached' });
     return cached;
   }
 
-  // Download from GitHub Releases (follows the redirect to objects.githubusercontent.com)
-  await broadcast({ type: 'sw-downloading' });
+  broadcast({ type: 'sw-downloading' });
 
-  let fetchResponse;
+  // Fetch from same origin (Vercel CDN) — SW's own fetch() bypasses this handler
+  let res;
   try {
-    fetchResponse = await fetch(JAR_REMOTE, { redirect: 'follow' });
+    res = await fetch(JAR_LOCAL);
   } catch (err) {
-    await broadcast({ type: 'sw-error', detail: String(err) });
+    broadcast({ type: 'sw-error', detail: String(err) });
     throw err;
   }
 
-  if (!fetchResponse.ok) {
-    const msg = `HTTP ${fetchResponse.status} downloading JAR`;
-    await broadcast({ type: 'sw-error', detail: msg });
+  if (!res.ok) {
+    const msg = `HTTP ${res.status} fetching JAR`;
+    broadcast({ type: 'sw-error', detail: msg });
     throw new Error(msg);
   }
 
-  // Stream the body while tracking progress
-  const contentLength = parseInt(fetchResponse.headers.get('content-length') || '0', 10);
-  const reader = fetchResponse.body.getReader();
+  // Stream with progress tracking
+  const total = parseInt(res.headers.get('content-length') || '0', 10);
+  const reader = res.body.getReader();
   const chunks = [];
   let received = 0;
 
@@ -62,21 +56,15 @@ async function serveJar(request) {
     if (done) break;
     chunks.push(value);
     received += value.byteLength;
-
-    if (contentLength > 0) {
-      broadcast({ type: 'sw-progress', pct: Math.round((received / contentLength) * 100) });
+    if (total > 0) {
+      broadcast({ type: 'sw-progress', pct: Math.round((received / total) * 100) });
     }
   }
 
-  // Concatenate chunks into a single Uint8Array
   const body = new Uint8Array(received);
   let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
 
-  // Build a clean response to cache and return
   const response = new Response(body.buffer, {
     status: 200,
     headers: {
@@ -86,7 +74,7 @@ async function serveJar(request) {
   });
 
   await cache.put(JAR_LOCAL, response.clone());
-  await broadcast({ type: 'sw-done', bytes: body.byteLength });
+  broadcast({ type: 'sw-done', bytes: body.byteLength });
 
   return response;
 }

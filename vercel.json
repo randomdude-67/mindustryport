@@ -1,0 +1,4 @@
+{
+  "buildCommand": "curl -L -o Mindustry.jar https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar",
+  "outputDirectory": "."
+}
