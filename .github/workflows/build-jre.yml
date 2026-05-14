@@ -41,9 +41,13 @@ jobs:
           echo "jre.ext2 size: $(du -sh jre.ext2)"
 
       - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: jre-v17
-          name: JRE 17 ext2 Image
-          body: Minimal Java 17 JRE packed as an ext2 image for CheerpX.
-          files: jre.ext2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Delete existing release/tag if present, then recreate
+          gh release delete jre-v17 --yes 2>/dev/null || true
+          git tag -d jre-v17 2>/dev/null || true
+          gh release create jre-v17 jre.ext2 \
+            --title "JRE 17 ext2 Image" \
+            --notes "Minimal Java 17 JRE for CheerpX"
+          echo "Upload complete. File size: $(du -sh jre.ext2)"
