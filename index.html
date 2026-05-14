@@ -119,7 +119,7 @@
         );
 
         setProgress(15, 'Setting up persistent storage…');
-        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r3');
+        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r4');
         const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
 
         setProgress(20, 'Mounting app files…');
@@ -149,14 +149,22 @@
         loader.classList.add('fade-out');
         display.style.display = 'block';
 
-        log('[run] setup + java');
+        log('[run] diagnostics + java');
         await cx.run('/bin/bash', ['-c', `
-          set -e
+          echo "[1] ls /app:"
+          ls /app 2>&1
+          echo "[2] ls /app/jre:"
+          ls /app/jre 2>&1
+          echo "[3] ls /app/jre/bin:"
+          ls /app/jre/bin 2>&1
+          echo "[4] head /app/jre/bin/java (ELF check):"
+          head -c 4 /app/jre/bin/java 2>&1 | cat
+          echo "[5] setup ld symlink"
           mkdir -p /lib64
           ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
-          echo "[setup] ld: $(ls -la /lib64/ld-linux-x86-64.so.2 2>&1)"
-          chmod +x /app/jre/bin/java
-          echo "[setup] chmod ok"
+          echo "[6] chmod java"
+          chmod +x /app/jre/bin/java && echo "chmod ok" || echo "chmod FAILED"
+          echo "[7] running java"
           exec /app/jre/bin/java \\
             -Djava.version=25.0.0 \\
             -Djava.specification.version=25 \\
