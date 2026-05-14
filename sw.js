@@ -1,7 +1,7 @@
 // Service worker: downloads Mindustry.jar from Vercel on first load,
 // caches it, and serves Range requests so CheerpJ can lazy-load class files.
 
-const CACHE = 'mindustry-jar-v157.4-r2';
+const CACHE = 'mindustry-jar-v157.4-r3';
 const JAR_LOCAL = '/Mindustry.jar';
 
 // Keep buffer in memory for fast Range slicing while the SW is alive

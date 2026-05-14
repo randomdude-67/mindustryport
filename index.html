@@ -220,7 +220,14 @@
       // ── 2. Init CheerpJ ─────────────────────────────────────────────────────
       setProgress(6, 'Loading Java runtime…');
       try {
-        await cheerpjInit({ status: 'none' });
+        await cheerpjInit({
+          status: 'none',
+          version: 17,
+          javaProperties: [
+            'java.version=25.0.0',
+            'java.specification.version=25',
+          ],
+        });
       } catch (err) {
         showError(
           'CheerpJ failed to initialize. Try a different browser (Chrome/Edge recommended).',
