@@ -1,7 +1,15 @@
 {
-  "buildCommand": "curl -L -o Mindustry.jar https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar",
+  "buildCommand": "curl -L -o Mindustry.jar https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar && curl -L -o jre.tar.gz https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jre/hotspot/normal/eclipse",
   "outputDirectory": ".",
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy",   "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy",  "value": "require-corp" },
+        { "key": "Cross-Origin-Resource-Policy",  "value": "cross-origin" }
+      ]
+    },
     {
       "source": "/sw.js",
       "headers": [
