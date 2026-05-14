@@ -109,8 +109,13 @@
         // Diagnose jre.ext2 before trying to mount it
         try {
           const h = await fetch('/jre.ext2', { method: 'HEAD' });
-          log(`[jre.ext2] HTTP ${h.status}, size=${h.headers.get('content-length')} bytes, type=${h.headers.get('content-type')}`);
-        } catch(e) { log(`[jre.ext2] HEAD failed: ${e}`); }
+          log(`[jre.ext2] size=${h.headers.get('content-length')} bytes, type=${h.headers.get('content-type')}, encoding=${h.headers.get('content-encoding')}`);
+
+          // Test range request — CheerpX needs 206 Partial Content
+          const r = await fetch('/jre.ext2', { headers: { 'Range': 'bytes=0-3' } });
+          const buf = await r.arrayBuffer();
+          log(`[jre.ext2 range] status=${r.status}, got ${buf.byteLength} bytes, accept-ranges=${h.headers.get('accept-ranges')}`);
+        } catch(e) { log(`[jre.ext2] check failed: ${e}`); }
 
         let jreDevice;
         try {
