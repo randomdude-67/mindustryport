@@ -15,13 +15,12 @@ tar -xzf jre.tar.gz -C jre/ --strip-components=1
 rm jre.tar.gz
 
 echo "--- Generating index.list files for CheerpX WebDevice ---"
-# CheerpX WebDevice needs an index.list in every directory it traverses.
-# Each index.list is a newline-separated list of the names in that directory.
+# -p appends / to directory names so CheerpX knows which entries are dirs vs files
 find jre -type d | while read dir; do
-  ls "$dir" > "$dir/index.list"
+  ls -p "$dir" > "$dir/index.list"
 done
 
-# Root-level index.list so CheerpX can see Mindustry.jar and jre/
-printf "Mindustry.jar\njre\n" > index.list
+# Root index.list: jre must have trailing slash so CheerpX treats it as a directory
+printf "Mindustry.jar\njre/\n" > index.list
 
 echo "--- Build complete ---"
