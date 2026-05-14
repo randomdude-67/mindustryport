@@ -3,8 +3,8 @@
 
 const CACHE = 'mindustry-jar-v157.4';
 const JAR_REMOTE = 'https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar';
-// The path CheerpJ will request from this origin:
-const JAR_LOCAL = '/app/Mindustry.jar';
+// CheerpJ strips /app/ prefix — actual HTTP request lands at /Mindustry.jar
+const JAR_LOCAL = '/Mindustry.jar';
 
 // Activate immediately and take control of all clients
 self.addEventListener('install', () => self.skipWaiting());
@@ -14,7 +14,7 @@ self.addEventListener('fetch', (event) => {
   const path = new URL(event.request.url).pathname;
 
   // Only intercept the Mindustry JAR request
-  if (path === JAR_LOCAL || path.endsWith('/app/Mindustry.jar')) {
+  if (path === JAR_LOCAL) {
     event.respondWith(serveJar(event.request));
   }
 });
