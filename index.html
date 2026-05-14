@@ -56,7 +56,8 @@
     import sdlglNatives from './natives/sdlgl.js';
 
     const CHEERPJ_RUNTIME_VERSION = 17;
-    const MINDUSTRY_CLASSPATH = '/app/Mindustry.jar:/app/dependencies.jar';
+    const MINDUSTRY_JAR = '/app/Mindustry.jar';
+    const MINDUSTRY_CLASSPATH = `${MINDUSTRY_JAR}:/app/dependencies.jar`;
     const statusEl = document.getElementById('status');
     const loader   = document.getElementById('loader');
     const logEl    = document.getElementById('log');
@@ -69,6 +70,11 @@
       logEl.scrollTop = logEl.scrollHeight;
     }
     function setStatus(msg) { statusEl.textContent = msg; log('[init] ' + msg); }
+    function describeError(err) {
+      if (!err) return 'Unknown error';
+      if (typeof err === 'string') return err;
+      return err.message || err.name || String(err);
+    }
 
     // Bridge Java's System.out/err so we see Mindustry's logging
     window.addEventListener('error', (e) => log('[error] ' + e.message));
@@ -130,7 +136,10 @@
         });
 
         setStatus('Preparing Mindustry classpath…');
-        const boot = await cheerpjRunLibrary(MINDUSTRY_CLASSPATH);
+        // Only load the main jar for bootstrap tweaks. Loading the whole
+        // application classpath in library mode can pull in unrelated desktop
+        // dependencies before we even reach Mindustry's main class.
+        const boot = await cheerpjRunLibrary(MINDUSTRY_JAR);
         const ArcNativesLoader = await boot.arc.util.ArcNativesLoader;
         const SharedLibraryLoader = await boot.arc.util.SharedLibraryLoader;
 
@@ -151,11 +160,14 @@
           await cheerpjRunMain('mindustry.desktop.DesktopLauncher', MINDUSTRY_CLASSPATH);
         } catch (err) {
           loader.classList.remove('fade-out');
-          setStatus('JVM exited: ' + err);
+          setStatus('JVM exited: ' + describeError(err));
+          console.error('[mindustry]', err);
         }
 
       } catch (err) {
-        setStatus('Failed: ' + (err.message || err));
+        setStatus('Failed: ' + describeError(err));
+        log('[debug] ' + describeError(err));
+        if (err?.stack) log('[stack] ' + err.stack);
         console.error(err);
       }
     }
