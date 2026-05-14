@@ -105,7 +105,7 @@
         );
 
         setProgress(15, 'Setting up persistent storage…');
-        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r6');
+        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r7');
         const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
 
         setProgress(20, 'Mounting app files…');
@@ -136,15 +136,12 @@
 
         await cx.run('/bin/bash', ['-c', `
           if [ ! -f /opt/jre/bin/java ]; then
-            echo "[setup] First run: extracting Java runtime into browser storage..."
-            echo "[setup] This takes 2-5 min once, then loads instantly forever."
-            mkdir -p /opt
-            tar -xf /app/jre.tar -C /opt/
-            echo "[setup] Extraction complete."
+            echo "[setup] First run: extracting 32-bit Java 8 runtime..."
+            echo "[setup] Takes 2-5 min once, instant every visit after."
+            mkdir -p /opt/jre
+            tar -xzf /app/jre.tar.gz -C /opt/jre/ --strip-components=1
+            echo "[setup] Done."
           fi
-          mkdir -p /lib64
-          ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
-          chmod +x /opt/jre/bin/java 2>/dev/null || true
           echo "[run] Starting Mindustry..."
           exec /opt/jre/bin/java \\
             -Djava.version=25.0.0 \\
