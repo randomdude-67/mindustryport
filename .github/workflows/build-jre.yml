@@ -44,9 +44,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Delete existing release/tag if present, then recreate
-          gh release delete jre-v17 --yes 2>/dev/null || true
-          git tag -d jre-v17 2>/dev/null || true
+          # Delete existing release + tag if present, then recreate
+          gh release delete jre-v17 --cleanup-tag --yes 2>/dev/null || true
           gh release create jre-v17 jre.ext2 \
             --title "JRE 17 ext2 Image" \
             --notes "Minimal Java 17 JRE for CheerpX"
