@@ -55,6 +55,7 @@
     import sdlNatives, { state, attachCanvas } from './natives/sdl.js';
     import sdlglNatives from './natives/sdlgl.js';
 
+    const CHEERPJ_RUNTIME_VERSION = 17;
     const statusEl = document.getElementById('status');
     const loader   = document.getElementById('loader');
     const logEl    = document.getElementById('log');
@@ -70,6 +71,9 @@
 
     // Bridge Java's System.out/err so we see Mindustry's logging
     window.addEventListener('error', (e) => log('[error] ' + e.message));
+    window.addEventListener('unhandledrejection', (e) => {
+      log('[promise] ' + (e.reason?.message || e.reason || 'Unhandled rejection'));
+    });
 
     // Clean up any leftover service workers from previous deployments
     // (CheerpX phase left a SW that interferes with CheerpJ's runtime fetches)
@@ -94,7 +98,7 @@
         display.height = window.innerHeight;
         attachCanvas(display);
 
-        setStatus('Loading CheerpJ runtime…');
+        setStatus(`Loading CheerpJ ${CHEERPJ_RUNTIME_VERSION} runtime…`);
         // CheerpJ 4 loader
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
@@ -108,15 +112,16 @@
         const natives = { ...sdlNatives, ...sdlglNatives };
         log(`[natives] ${Object.keys(natives).length} JNI methods registered`);
 
-        setStatus('Initializing Java runtime…');
+        setStatus(`Initializing Java ${CHEERPJ_RUNTIME_VERSION} runtime…`);
         await cheerpjInit({
+          // CheerpJ defaults to Java 8 if no runtime version is provided.
+          version: CHEERPJ_RUNTIME_VERSION,
           status: 'none',
           natives,
-          // Spoof the Java version Mindustry checks for at startup
           javaProperties: [
-            'java.version=25.0.0',
-            'java.specification.version=25',
-            'java.vm.version=25.0.0',
+            `java.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
+            `java.specification.version=${CHEERPJ_RUNTIME_VERSION}`,
+            `java.vm.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
             'org.lwjgl.system.allocator=system',
           ],
         });
