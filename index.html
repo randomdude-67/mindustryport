@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mindustry</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0a12;
+      overflow: hidden;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* CheerpJ injects a canvas into body — make it fill the screen */
+    body > canvas {
+      position: fixed !important;
+      top: 0 !important; left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+
+    /* ── Loading overlay ── */
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0a0a12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      transition: opacity 0.6s ease;
+    }
+
+    #loader.fade-out { opacity: 0; pointer-events: none; }
+
+    .logo {
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: 10px;
+      color: #f0a030;
+      text-shadow: 0 0 30px rgba(240,160,48,0.4);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .tagline {
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      color: #4a4a6a;
+      text-transform: uppercase;
+    }
+
+    .bar-track {
+      width: 280px;
+      height: 3px;
+      background: #1a1a2e;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #c07820, #f0a030);
+      border-radius: 2px;
+      transition: width 0.35s ease;
+    }
+
+    .bar-fill.error { background: #c03030; transition: none; }
+
+    .status {
+      font-size: 0.72rem;
+      color: #6a6a8a;
+      letter-spacing: 1px;
+      min-height: 1.2em;
+    }
+
+    .hint {
+      font-size: 0.62rem;
+      color: #333355;
+      max-width: 280px;
+      text-align: center;
+      line-height: 1.6;
+      margin-top: 6px;
+    }
+
+    #error-panel {
+      display: none;
+      background: #1a0a0a;
+      border: 1px solid #5a1a1a;
+      border-radius: 4px;
+      padding: 16px 20px;
+      max-width: 420px;
+      width: 90%;
+      margin-top: 8px;
+    }
+
+    #error-panel p {
+      font-size: 0.75rem;
+      color: #cc4444;
+      line-height: 1.7;
+    }
+
+    #error-panel code {
+      display: block;
+      margin-top: 8px;
+      font-size: 0.68rem;
+      color: #886666;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loader">
+    <div class="logo">Mindustry</div>
+    <div class="tagline">v157.4 &nbsp;·&nbsp; Web Port &nbsp;·&nbsp; Powered by CheerpJ</div>
+
+    <div class="bar-track">
+      <div class="bar-fill" id="bar"></div>
+    </div>
+    <div class="status" id="status">Initializing…</div>
+
+    <div class="hint" id="hint">
+      First visit downloads ~85 MB (cached after that).<br>
+      Your saves are stored <strong style="color:#5a5a7a">only in this browser</strong> — completely separate from every other player.
+    </div>
+
+    <div id="error-panel">
+      <p id="error-text"></p>
+      <code id="error-detail"></code>
+    </div>
+  </div>
+
+  <!-- CheerpJ 4.3 runtime -->
+  <script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+
+  <script>
+    const bar     = document.getElementById('bar');
+    const status  = document.getElementById('status');
+    const loader  = document.getElementById('loader');
+    const hint    = document.getElementById('hint');
+    const errPanel = document.getElementById('error-panel');
+    const errText  = document.getElementById('error-text');
+    const errDetail = document.getElementById('error-detail');
+
+    function setProgress(pct, msg) {
+      bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      if (msg) status.textContent = msg;
+    }
+
+    function showError(msg, detail) {
+      bar.classList.add('error');
+      bar.style.width = '100%';
+      status.textContent = 'Failed to start';
+      errText.textContent = msg;
+      if (detail) errDetail.textContent = detail;
+      errPanel.style.display = 'block';
+      hint.style.display = 'none';
+      loader.classList.remove('fade-out');
+    }
+
+    // Listen for service worker progress messages
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        switch (e.data.type) {
+          case 'sw-downloading':
+            setProgress(8, 'Downloading Mindustry (~85 MB, first time only)…');
+            hint.style.display = 'none'; // shown later
+            break;
+          case 'sw-progress':
+            setProgress(8 + Math.round(e.data.pct * 0.52), // 8–60%
+              `Downloading… ${e.data.pct}%`);
+            break;
+          case 'sw-done':
+            setProgress(62, 'Download complete — starting runtime…');
+            break;
+          case 'sw-cached':
+            setProgress(62, 'Loaded from cache — starting runtime…');
+            break;
+          case 'sw-error':
+            showError(
+              'Could not download Mindustry.jar. Check your connection and reload.',
+              e.data.detail
+            );
+            break;
+        }
+      });
+    }
+
+    async function main() {
+      // ── 1. Register service worker ──────────────────────────────────────────
+      if ('serviceWorker' in navigator) {
+        try {
+          await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          await navigator.serviceWorker.ready;
+          setProgress(5, 'Cache worker ready');
+        } catch (err) {
+          // Non-fatal: CheerpJ will try to fetch /app/Mindustry.jar directly
+          console.warn('Service worker unavailable:', err);
+          setProgress(5, 'Continuing without cache worker…');
+        }
+      }
+
+      // ── 2. Init CheerpJ ─────────────────────────────────────────────────────
+      setProgress(6, 'Loading Java runtime…');
+      try {
+        await cheerpjInit({ status: 'none' });
+      } catch (err) {
+        showError(
+          'CheerpJ failed to initialize. Try a different browser (Chrome/Edge recommended).',
+          String(err)
+        );
+        return;
+      }
+
+      setProgress(65, 'Creating display…');
+
+      // ── 3. Create display ───────────────────────────────────────────────────
+      // cheerpjCreateDisplay appends a canvas to the body at the given size.
+      // We CSS-override it to fill the viewport regardless.
+      cheerpjCreateDisplay(1280, 720);
+
+      setProgress(80, 'Starting Mindustry…');
+
+      // ── 4. Fade the loader out, then run the JAR ────────────────────────────
+      // We can't wait for the first rendered frame, so fade out after 1.5 s.
+      setTimeout(() => loader.classList.add('fade-out'), 1500);
+
+      try {
+        // cheerpjRunJar resolves when the JVM exits — i.e. never during normal play.
+        await cheerpjRunJar('/app/Mindustry.jar');
+      } catch (err) {
+        loader.classList.remove('fade-out');
+        showError(
+          'Mindustry crashed or failed to start. This may be a compatibility issue with the browser or the game version.',
+          String(err)
+        );
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
