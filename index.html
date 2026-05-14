@@ -104,7 +104,7 @@
         );
 
         setProgress(15, 'Setting up persistent storage…');
-        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157');
+        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r3');
         const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
 
         setProgress(20, 'Mounting app files…');
@@ -134,8 +134,17 @@
         loader.classList.add('fade-out');
         display.style.display = 'block';
 
+        // Debug: show what WebDevice exposes at /app
+        log('[debug] listing /app ...');
+        await cx.run('/bin/bash', ['-c', 'echo "==/app=="; ls /app; echo "==/app/jre=="; ls /app/jre 2>&1; echo "==/app/jre/bin=="; ls /app/jre/bin 2>&1'], {
+          uid: 0, gid: 0,
+          env: ['HOME=/root', 'PATH=/bin:/usr/bin'],
+        });
+
         log('[run] chmod +x /app/jre/bin/java');
-        await cx.run('/bin/chmod', ['+x', '/app/jre/bin/java'], { uid: 0, gid: 0 });
+        await cx.run('/bin/bash', ['-c', 'chmod +x /app/jre/bin/java && echo "chmod ok"'], {
+          uid: 0, gid: 0, env: ['HOME=/root', 'PATH=/bin:/usr/bin'],
+        });
 
         log('[run] java -jar /app/Mindustry.jar');
         await cx.run('/app/jre/bin/java', [
