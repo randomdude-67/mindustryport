@@ -200,9 +200,18 @@
         try {
           await navigator.serviceWorker.register('./sw.js', { scope: './' });
           await navigator.serviceWorker.ready;
+
+          // If no SW is controlling this page yet (first install or update),
+          // wait for it to claim the page before CheerpJ makes any requests.
+          if (!navigator.serviceWorker.controller) {
+            setProgress(3, 'Activating cache worker…');
+            await new Promise(resolve => {
+              navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+            });
+          }
+
           setProgress(5, 'Cache worker ready');
         } catch (err) {
-          // Non-fatal: CheerpJ will try to fetch /app/Mindustry.jar directly
           console.warn('Service worker unavailable:', err);
           setProgress(5, 'Continuing without cache worker…');
         }
