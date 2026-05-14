@@ -71,8 +71,24 @@
     // Bridge Java's System.out/err so we see Mindustry's logging
     window.addEventListener('error', (e) => log('[error] ' + e.message));
 
+    // Clean up any leftover service workers from previous deployments
+    // (CheerpX phase left a SW that interferes with CheerpJ's runtime fetches)
+    async function killOldServiceWorkers() {
+      if (!('serviceWorker' in navigator)) return;
+      const regs = await navigator.serviceWorker.getRegistrations();
+      if (regs.length === 0) return;
+      log(`[cleanup] unregistering ${regs.length} old service worker(s)`);
+      for (const r of regs) await r.unregister();
+      const keys = await caches.keys();
+      for (const k of keys) await caches.delete(k);
+      log('[cleanup] caches cleared, reloading...');
+      location.reload();
+      await new Promise(() => {}); // halt
+    }
+
     async function main() {
       try {
+        await killOldServiceWorkers();
         setStatus('Sizing canvas…');
         display.width  = window.innerWidth;
         display.height = window.innerHeight;
