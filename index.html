@@ -149,27 +149,14 @@
         loader.classList.add('fade-out');
         display.style.display = 'block';
 
-        log('[run] diagnostics + java');
+        log('[run] checking for system java...');
         await cx.run('/bin/bash', ['-c', `
-          echo "[1] ls /app:"
-          ls /app 2>&1
-          echo "[2] ls /app/jre:"
-          ls /app/jre 2>&1
-          echo "[3] ls /app/jre/bin:"
-          ls /app/jre/bin 2>&1
-          echo "[4] head /app/jre/bin/java (ELF check):"
-          head -c 4 /app/jre/bin/java 2>&1 | cat
-          echo "[5] setup ld symlink"
-          mkdir -p /lib64
-          ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
-          echo "[6] chmod java"
-          chmod +x /app/jre/bin/java && echo "chmod ok" || echo "chmod FAILED"
-          echo "[7] running java"
-          exec /app/jre/bin/java \\
-            -Djava.version=25.0.0 \\
-            -Djava.specification.version=25 \\
-            -Djava.vm.version=25.0.0 \\
-            -jar /app/Mindustry.jar
+          echo "[java-check] which java: $(which java 2>&1)"
+          echo "[java-check] /usr/bin/java: $(ls -la /usr/bin/java 2>&1)"
+          echo "[java-check] find java bins:"
+          find /usr /opt -name 'java' -type f 2>/dev/null | head -5
+          echo "[java-check] dpkg java:"
+          dpkg -l | grep -i java | head -5 2>&1 || true
         `], {
           env: [
             'HOME=/root',
