@@ -104,65 +104,48 @@
           'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
         );
 
-        setProgress(12, 'Loading JRE image…');
-
-        // Diagnose jre.ext2 before trying to mount it
-        try {
-          const h = await fetch('/jre.ext2', { method: 'HEAD' });
-          log(`[jre.ext2] size=${h.headers.get('content-length')} bytes, type=${h.headers.get('content-type')}, encoding=${h.headers.get('content-encoding')}`);
-
-          // Test range request — CheerpX needs 206 Partial Content
-          const r = await fetch('/jre.ext2', { headers: { 'Range': 'bytes=0-3' } });
-          const buf = await r.arrayBuffer();
-          log(`[jre.ext2 range] status=${r.status}, got ${buf.byteLength} bytes, accept-ranges=${h.headers.get('accept-ranges')}`);
-        } catch(e) { log(`[jre.ext2] check failed: ${e}`); }
-
-        let jreDevice;
-        try {
-          jreDevice = await CheerpX.CloudDevice.create(location.origin + '/jre.ext2');
-          log(`[jre] CloudDevice created: ${jreDevice ? 'ok' : 'null/undefined'}`);
-        } catch(e) {
-          log(`[jre] CloudDevice.create threw: ${e}`);
-        }
-
-        setProgress(18, 'Setting up persistent storage…');
-        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r5');
+        setProgress(15, 'Setting up persistent storage…');
+        const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r6');
         const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
 
-        setProgress(23, 'Mounting app files…');
+        setProgress(20, 'Mounting app files…');
         const webDevice  = await CheerpX.WebDevice.create('');
         const dataDevice = await CheerpX.DataDevice.create();
 
-        setProgress(30, 'Starting Linux…');
+        setProgress(28, 'Starting Linux…');
         const cx = await CheerpX.Linux.create({
           mounts: [
-            { type: 'ext2', path: '/',       dev: overlayDevice },
-            { type: 'ext2', path: '/opt/jre', dev: jreDevice    },
-            { type: 'dir',  path: '/app',    dev: webDevice     },
-            { type: 'dir',  path: '/data',   dev: dataDevice    },
-            { type: 'devs', path: '/dev'                        },
+            { type: 'ext2', path: '/',    dev: overlayDevice },
+            { type: 'dir',  path: '/app', dev: webDevice     },
+            { type: 'dir',  path: '/data',dev: dataDevice    },
+            { type: 'devs', path: '/dev'                     },
           ],
         });
 
-        // Route Linux stdout/stderr to our on-screen log
         cx.setConsole(logEl);
 
-        setProgress(50, 'Setting up display…');
+        setProgress(45, 'Setting up display…');
         cx.setKmsCanvas(display, window.innerWidth, window.innerHeight);
         window.addEventListener('resize', () => {
           cx.setKmsCanvas(display, window.innerWidth, window.innerHeight);
         });
 
-        setProgress(60, 'Starting Mindustry…');
+        setProgress(55, 'Starting Mindustry…');
         loader.classList.add('fade-out');
         display.style.display = 'block';
 
-        log('[run] launching Mindustry');
         await cx.run('/bin/bash', ['-c', `
-          echo "[info] /opt/jre/bin/java: $(ls -la /opt/jre/bin/java 2>&1)"
+          if [ ! -f /opt/jre/bin/java ]; then
+            echo "[setup] First run: extracting Java runtime into browser storage..."
+            echo "[setup] This takes 2-5 min once, then loads instantly forever."
+            mkdir -p /opt
+            tar -xf /app/jre.tar -C /opt/
+            echo "[setup] Extraction complete."
+          fi
           mkdir -p /lib64
           ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
-          echo "[info] ld symlink ok"
+          chmod +x /opt/jre/bin/java 2>/dev/null || true
+          echo "[run] Starting Mindustry..."
           exec /opt/jre/bin/java \\
             -Djava.version=25.0.0 \\
             -Djava.specification.version=25 \\
