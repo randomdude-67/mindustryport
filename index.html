@@ -123,23 +123,15 @@
         // Startup script:
         //   1. Extract JRE on first run (saved to IDB overlay, skipped on subsequent runs)
         //   2. Run Mindustry with spoofed Java version string
-        await cx.run('/bin/bash', ['-c', `
-          set -e
-          if [ ! -f /opt/jre/bin/java ]; then
-            echo "[setup] Extracting Java runtime (first run only)..."
-            mkdir -p /opt/jre_tmp
-            tar -xzf /app/jre.tar.gz -C /opt/jre_tmp/
-            mv /opt/jre_tmp/*/ /opt/jre
-            rmdir /opt/jre_tmp 2>/dev/null || true
-            echo "[setup] Java ready."
-          fi
-          exec /opt/jre/bin/java \
-            -Djava.version=25.0.0 \
-            -Djava.specification.version=25 \
-            -Djava.vm.version=25.0.0 \
-            -Djava.class.version=69 \
-            -jar /app/Mindustry.jar
-        `], {
+        // Make the java binary executable (WebDevice may not preserve permissions)
+        await cx.run('/bin/chmod', ['+x', '/app/jre/bin/java'], { uid: 0, gid: 0 });
+
+        await cx.run('/app/jre/bin/java', [
+          '-Djava.version=25.0.0',
+          '-Djava.specification.version=25',
+          '-Djava.vm.version=25.0.0',
+          '-jar', '/app/Mindustry.jar',
+        ], {
           env: [
             'HOME=/root',
             'USER=root',
