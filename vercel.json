@@ -1,20 +1,4 @@
 {
   "buildCommand": "bash build.sh",
-  "outputDirectory": ".",
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Cross-Origin-Opener-Policy",   "value": "same-origin" },
-        { "key": "Cross-Origin-Embedder-Policy",  "value": "require-corp" },
-        { "key": "Cross-Origin-Resource-Policy",  "value": "cross-origin" }
-      ]
-    },
-    {
-      "source": "/sw.js",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    }
-  ]
+  "outputDirectory": "."
 }
