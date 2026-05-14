@@ -104,7 +104,20 @@
         );
 
         setProgress(12, 'Loading JRE image…');
-        const jreDevice = await CheerpX.CloudDevice.create(location.origin + '/jre.ext2');
+
+        // Diagnose jre.ext2 before trying to mount it
+        try {
+          const h = await fetch('/jre.ext2', { method: 'HEAD' });
+          log(`[jre.ext2] HTTP ${h.status}, size=${h.headers.get('content-length')} bytes, type=${h.headers.get('content-type')}`);
+        } catch(e) { log(`[jre.ext2] HEAD failed: ${e}`); }
+
+        let jreDevice;
+        try {
+          jreDevice = await CheerpX.CloudDevice.create(location.origin + '/jre.ext2');
+          log(`[jre] CloudDevice created: ${jreDevice ? 'ok' : 'null/undefined'}`);
+        } catch(e) {
+          log(`[jre] CloudDevice.create threw: ${e}`);
+        }
 
         setProgress(18, 'Setting up persistent storage…');
         const idbDevice     = await CheerpX.IDBDevice.create('mindustry-v157-r5');
