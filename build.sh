@@ -75,6 +75,14 @@ PATCHES = [
         "OS.<clinit> legacy branch -> bipush 25",
         "DEPS_FRESHLY_DOWNLOADED",
     ),
+    (
+        "dependencies.jar",
+        "arc/util/SharedLibraryLoader.class",
+        b"\xb2\x00\x6e\x99\x00\x04\xb1\x12\x08",  # getstatic OS.isIos; ifeq 7; return; ldc #8
+        b"\xb1\x00\x6e\x99\x00\x04\xb1\x12\x08",  # return; dead bytes
+        "SharedLibraryLoader.load -> immediate return (skips System.loadLibrary)",
+        "DEPS_FRESHLY_DOWNLOADED",
+    ),
 ]
 
 for jar, entry, unp, p, desc, env in PATCHES:
