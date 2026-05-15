@@ -55,6 +55,52 @@
     import sdlNatives, { state, attachCanvas } from './natives/sdl.js';
     import sdlglNatives from './natives/sdlgl.js';
 
+    // ── CheerpJ blob-MIME workaround ─────────────────────────────────────────
+    // CheerpJ probes for `JNI_OnLoad` of every native library a Java class
+    // declares. The probe creates an in-memory JS module via `new Blob([code])`
+    // (no MIME type) and then `import(URL.createObjectURL(blob))`. Chrome's
+    // strict module-MIME check refuses any module whose blob has `type === ''`
+    // and the worker hangs with "MIME type of 'null'".
+    //
+    // The Blob is constructed inside CheerpJ's Web Worker, where main-thread
+    // monkey-patches don't reach. So we intercept `new Worker(url)` itself:
+    // re-emit a wrapper script that first re-defines `URL.createObjectURL` in
+    // the worker scope, then loads the original worker code. Both module
+    // workers (top-level await + dynamic import) and classic workers
+    // (importScripts) are handled.
+    {
+      const WORKER_PATCH = `
+        const __cj_origCreateObjectURL = URL.createObjectURL.bind(URL);
+        URL.createObjectURL = (obj) => {
+          if (obj instanceof Blob && obj.type === '') {
+            obj = new Blob([obj], { type: 'text/javascript' });
+          }
+          return __cj_origCreateObjectURL(obj);
+        };
+      `;
+      const OrigWorker = self.Worker;
+      self.Worker = class extends OrigWorker {
+        constructor(url, opts) {
+          const urlStr = String(url);
+          const isModule = !!(opts && opts.type === 'module');
+          const loader = isModule
+            ? 'await import(' + JSON.stringify(urlStr) + ');'
+            : 'importScripts(' + JSON.stringify(urlStr) + ');';
+          const wrapper = WORKER_PATCH + '\n' + loader;
+          const blob = new Blob([wrapper], { type: 'text/javascript' });
+          super(URL.createObjectURL(blob), opts);
+        }
+      };
+      // Same patch on the main thread, in case CheerpJ does any imports here.
+      const orig = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = (obj) => {
+        if (obj instanceof Blob && obj.type === '') {
+          obj = new Blob([obj], { type: 'text/javascript' });
+        }
+        return orig(obj);
+      };
+    }
+
     // Mindustry's release JARs are Java 8 bytecode (class version 52);
     // CheerpJ defaults to Java 8 so we leave it unset. Pinning Java 17 made
     // CheerpJ fetch /lib/modules (jimage), which fails with
