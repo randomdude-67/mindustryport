@@ -67,19 +67,41 @@ PATCHES = [
         "DesktopLauncher.checkJavaVersion -> immediate return",
         "MINDUSTRY_FRESHLY_DOWNLOADED",
     ),
+    # arc/util/OS.class and arc/util/SharedLibraryLoader.class are present in
+    # BOTH Mindustry.jar AND dependencies.jar. The classpath order is
+    # `/app/override:/app/Mindustry.jar:/app/dependencies.jar`, so the copy in
+    # Mindustry.jar wins and a patch only to dependencies.jar has no effect.
+    # We patch both for safety: whichever JAR gets fresh-downloaded gets
+    # repatched, and both copies stay in sync.
+    (
+        "Mindustry.jar",
+        "arc/util/OS.class",
+        b"\x99\x00\x08\x10\x08\xa7\x00\x2d",
+        b"\x99\x00\x08\x10\x19\xa7\x00\x2d",
+        "OS.<clinit> legacy branch -> bipush 25",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
     (
         "dependencies.jar",
         "arc/util/OS.class",
-        b"\x99\x00\x08\x10\x08\xa7\x00\x2d",  # ifeq +8; bipush 8;  goto +45
-        b"\x99\x00\x08\x10\x19\xa7\x00\x2d",  # ifeq +8; bipush 25; goto +45
+        b"\x99\x00\x08\x10\x08\xa7\x00\x2d",
+        b"\x99\x00\x08\x10\x19\xa7\x00\x2d",
         "OS.<clinit> legacy branch -> bipush 25",
         "DEPS_FRESHLY_DOWNLOADED",
     ),
     (
+        "Mindustry.jar",
+        "arc/util/SharedLibraryLoader.class",
+        b"\xb2\x00\x6e\x99\x00\x04\xb1\x12\x08",
+        b"\xb1\x00\x6e\x99\x00\x04\xb1\x12\x08",
+        "SharedLibraryLoader.load -> immediate return (skips System.loadLibrary)",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
+    (
         "dependencies.jar",
         "arc/util/SharedLibraryLoader.class",
-        b"\xb2\x00\x6e\x99\x00\x04\xb1\x12\x08",  # getstatic OS.isIos; ifeq 7; return; ldc #8
-        b"\xb1\x00\x6e\x99\x00\x04\xb1\x12\x08",  # return; dead bytes
+        b"\xb2\x00\x6e\x99\x00\x04\xb1\x12\x08",
+        b"\xb1\x00\x6e\x99\x00\x04\xb1\x12\x08",
         "SharedLibraryLoader.load -> immediate return (skips System.loadLibrary)",
         "DEPS_FRESHLY_DOWNLOADED",
     ),
