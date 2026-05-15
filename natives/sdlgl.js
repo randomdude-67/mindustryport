@@ -64,7 +64,9 @@ const U8  = (b) => asTypedArray(b, Uint8Array);
 
 // ── JNI implementations ───────────────────────────────────────────────────────
 const m = {
-  init: async (lib) => 'WebGL via CheerpJ',
+  // Returns null on success; any non-null/non-empty return is treated by Arc
+  // as the *error message* (printed as "GLEW failed to initialize: <return>").
+  init: async (lib) => null,
 
   // ── Per-frame state ────────────────────────────────────────────────────────
   glClear:        async (lib, mask) => gl().clear(mask),
