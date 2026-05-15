@@ -3318,17 +3318,36 @@ function cheerpOSGetFileBlobFd(fds, fd, path, cb)
 					mimeType = m;
 			}
 			cheerpOSClose(fds, fd, function(){});
-			// PATCH (mindustryport fork): when an unknown extension is being
-			// loaded for `import()`, returning a blob with `type === "null"`
-			// causes Chrome's strict module-MIME check to reject it. Worse,
-			// when CheerpJ falls back to scanning JAR resources for a missing
-			// native library, it extracts a binary `.so`/`.dll`/`.dylib`/etc.
-			// and tries to import the binary bytes as JS — producing an
-			// unhandled `SyntaxError` from the unguarded `f.then(c)` in JR.
-			// Returning null here makes the `if(l!==null)` check in the
-			// caller skip the import entirely.
-			if(ext && (ext === "so" || ext === "dll" || ext === "dylib" || ext === "jnilib")){
-				return cb(null);
+			// PATCH (mindustryport fork): when CheerpJ probes for a native
+			// library symbol and falls back to extracting a `.so`/`.dll`/
+			// `.dylib` from JAR resources, it builds a typeless Blob and
+			// `import()`s it from `JR(n,l)` in cj3.js. The unguarded
+			// `f.then(c)` there produces an unhandled SyntaxError on the
+			// binary content. We can't predict every extension CheerpJ
+			// might probe (and some paths arrive with no extension at all),
+			// so detect binary content directly: any byte sequence that
+			// doesn't start with a printable-ASCII / whitespace byte can't
+			// be a JavaScript module. Returning null hits the
+			// `if(l!==null)` guard in the caller and the import is skipped.
+			if(buf.length > 0){
+				var b0 = buf[0];
+				var b1 = buf.length > 1 ? buf[1] : 0;
+				// Reject obvious binary signatures: ELF (7F 45), Mach-O
+				// (CE/CF/FE), Java class (CA FE), WASM (00 61), PE/MZ
+				// (4D 5A). Also reject any leading high-bit byte and any
+				// non-printable / non-whitespace ASCII byte.
+				var isWasm = (b0 === 0x00 && b1 === 0x61);
+				var isElf = (b0 === 0x7F && b1 === 0x45);
+				var isMachO = (b0 === 0xCE || b0 === 0xCF || b0 === 0xFE);
+				var isJavaClass = (b0 === 0xCA && b1 === 0xFE);
+				var isPE = (b0 === 0x4D && b1 === 0x5A);
+				var isHighBit = (b0 >= 0x80);
+				var isPrintableAscii = (b0 >= 0x20 && b0 <= 0x7E);
+				var isWhitespace = (b0 === 0x09 || b0 === 0x0A || b0 === 0x0D);
+				var looksBinary = isWasm || isElf || isMachO || isJavaClass || isPE || isHighBit || (!isPrintableAscii && !isWhitespace);
+				if(looksBinary){
+					return cb(null);
+				}
 			}
 			var blob=new Blob([buf], {type: mimeType});
 			return cb(blob);
