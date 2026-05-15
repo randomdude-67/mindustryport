@@ -203,9 +203,20 @@ const methods = {
   },
   'SDL_GL_CreateContext': async (lib, win) => {
     if (!state.canvas) throw new Error('SDL_GL_CreateContext: no canvas attached');
-    state.gl = state.canvas.getContext('webgl2', { alpha: false, antialias: false, depth: true, stencil: true })
-            || state.canvas.getContext('webgl',  { alpha: false, antialias: false, depth: true, stencil: true });
-    if (!state.gl) throw new Error('WebGL not supported');
+    // `failIfMajorPerformanceCaveat: false` lets the context be created on
+    // software renderers (SwiftShader / llvmpipe) — important for Chromebooks,
+    // remote desktops, and machines without proper GPU drivers. Performance
+    // will be poor but the game can still render.
+    const opts = {
+      alpha: false, antialias: false, depth: true, stencil: true,
+      failIfMajorPerformanceCaveat: false,
+      powerPreference: 'low-power',
+      preserveDrawingBuffer: false,
+    };
+    state.gl = state.canvas.getContext('webgl2', opts)
+            || state.canvas.getContext('webgl', opts)
+            || state.canvas.getContext('experimental-webgl', opts);
+    if (!state.gl) throw new Error('WebGL not supported in this browser');
     return state.glContextHandle;
   },
   'SDL_GL_SetSwapInterval': async (lib, on) => 0,

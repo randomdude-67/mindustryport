@@ -54,6 +54,7 @@
     import { mangleClass } from './natives/jni.js';
     import sdlNatives, { state, attachCanvas } from './natives/sdl.js';
     import sdlglNatives from './natives/sdlgl.js';
+    import arcNatives from './natives/arc.js';
 
     // ── CheerpJ blob-MIME workaround ─────────────────────────────────────────
     // CheerpJ loads library JS via `import(URL.createObjectURL(blob))`. The
@@ -198,7 +199,22 @@
         });
 
         setStatus('Combining native implementations…');
-        const natives = { ...sdlNatives, ...sdlglNatives };
+        // arcNatives is a Proxy that auto-stubs any unimplemented `Java_arc_*`
+        // method as a no-op returning 0. Spread enumerates only its own keys
+        // (Soloud stubs), so for the proxy auto-stub behaviour to work at JNI
+        // resolution time we hand CheerpJ the merged object via a Proxy too.
+        const _staticNatives = { ...arcNatives, ...sdlNatives, ...sdlglNatives };
+        const natives = new Proxy(_staticNatives, {
+          get(target, prop) {
+            if (prop in target) return target[prop];
+            // Fall through to arcNatives' auto-stub for any Java_arc_* miss.
+            if (typeof prop === 'string' && prop.startsWith('Java_arc_')) return arcNatives[prop];
+            return undefined;
+          },
+          has(target, prop) {
+            return (prop in target) || (typeof prop === 'string' && prop.startsWith('Java_arc_'));
+          },
+        });
         log(`[natives] ${Object.keys(natives).length} JNI methods registered`);
 
         setStatus('Initializing Java runtime…');

@@ -2,10 +2,19 @@ function logArc(msg) {
   console.log(`[arc-native] ${msg}`);
 }
 
-function makeThrowingStub(name) {
+const _loggedMissing = new Set();
+function makeNoopStub(name) {
+  // Throwing here propagates as an unhandled JNI exception and crashes the
+  // JVM mid-frame, killing the whole page. Most missing Arc natives are
+  // audio (Soloud) or text (FreeType) calls whose return value the game
+  // tolerates being 0/null — so prefer a quiet no-op + one-time log, and
+  // let the user *see* something even if it isn't fully functional.
   return async function missingArcNative() {
-    logArc(`missing ${name}`);
-    throw new Error(`Missing arc native: ${name}`);
+    if (!_loggedMissing.has(name)) {
+      _loggedMissing.add(name);
+      logArc(`stubbed (no-op): ${name}`);
+    }
+    return 0;
   };
 }
 
@@ -86,7 +95,7 @@ const nativeImpls = new Proxy(soloudStubs, {
       return Reflect.get(target, prop, receiver);
     }
     if (typeof prop === 'string' && prop.startsWith('Java_arc_')) {
-      return makeThrowingStub(prop);
+      return makeNoopStub(prop);
     }
     return Reflect.get(target, prop, receiver);
   },
