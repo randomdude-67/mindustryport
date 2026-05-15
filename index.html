@@ -51,6 +51,22 @@
   <div id="log"></div>
 
   <script type="module">
+    // CheerpJ creates Blobs from native-library JS content via
+    // `new Blob([code])` without setting `type`. When it then
+    // `import(URL.createObjectURL(blob))`s the result, Chrome's strict
+    // module-MIME check refuses because `blob.type === ''`. Re-wrap typeless
+    // blobs as `text/javascript` so the dynamic import succeeds. Must run
+    // before the CheerpJ loader script executes.
+    {
+      const orig = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = (obj) => {
+        if (obj instanceof Blob && obj.type === '') {
+          obj = new Blob([obj], { type: 'text/javascript' });
+        }
+        return orig(obj);
+      };
+    }
+
     import { mangleClass } from './natives/jni.js';
     import sdlNatives, { state, attachCanvas } from './natives/sdl.js';
     import sdlglNatives from './natives/sdlgl.js';
