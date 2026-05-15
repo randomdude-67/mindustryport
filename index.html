@@ -178,18 +178,20 @@
             'java.library.path=/app/natives',
             'os.arch=amd64',
             'sun.arch.data.model=64',
-            // Mindustry's DesktopLauncher.checkJavaVersion() refuses to start
-            // unless System.getProperty("java.version") parses to >= 25. The
-            // JARs are Java 8 bytecode so this is purely a runtime check we
-            // can satisfy by spoofing the reported version; the underlying
-            // CheerpJ runtime stays at its Java 8 default.
-            'java.version=25.0.0',
-            'java.specification.version=25',
-            'java.vm.version=25.0.0',
             'org.lwjgl.system.allocator=system',
           ],
         });
         stdlib = await cheerpjRunLibrary('');
+
+        // arc.util.OS.<clinit> parses System.getProperty("java.version") and
+        // Mindustry's DesktopLauncher.checkJavaVersion() refuses to run when
+        // that's < 25. CheerpJ pins java.version to "1.8.0_xxx" and ignores
+        // the javaProperties override, so we set it on the live System after
+        // init — arc.util.OS hasn't been loaded yet, so this wins.
+        const System = await stdlib.java.lang.System;
+        await System.setProperty('java.version', '25.0.0');
+        await System.setProperty('java.specification.version', '25');
+        await System.setProperty('java.vm.version', '25.0.0');
 
         setStatus('Starting Mindustry…');
         loader.classList.add('fade-out');
