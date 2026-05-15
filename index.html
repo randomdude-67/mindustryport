@@ -55,7 +55,11 @@
     import sdlNatives, { state, attachCanvas } from './natives/sdl.js';
     import sdlglNatives from './natives/sdlgl.js';
 
-    const CHEERPJ_RUNTIME_VERSION = 17;
+    // Mindustry's release JARs are Java 8 bytecode (class version 52);
+    // CheerpJ defaults to Java 8 so we leave it unset. Pinning Java 17 made
+    // CheerpJ fetch /lib/modules (jimage), which fails with
+    // ERR_CACHE_OPERATION_NOT_SUPPORTED on some browsers and surfaces as a
+    // bogus NoClassDefFoundError for netscape/javascript/JSObject.
     const MINDUSTRY_CLASSPATH = '/app/override:/app/Mindustry.jar:/app/dependencies.jar';
     let stdlib = null;
     const statusEl = document.getElementById('status');
@@ -152,7 +156,7 @@
         display.height = window.innerHeight;
         attachCanvas(display);
 
-        setStatus(`Loading CheerpJ ${CHEERPJ_RUNTIME_VERSION} runtime…`);
+        setStatus('Loading CheerpJ runtime…');
         // CheerpJ 4 loader
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
@@ -166,19 +170,14 @@
         const natives = { ...sdlNatives, ...sdlglNatives };
         log(`[natives] ${Object.keys(natives).length} JNI methods registered`);
 
-        setStatus(`Initializing Java ${CHEERPJ_RUNTIME_VERSION} runtime…`);
+        setStatus('Initializing Java runtime…');
         await cheerpjInit({
-          // CheerpJ defaults to Java 8 if no runtime version is provided.
-          version: CHEERPJ_RUNTIME_VERSION,
           status: 'none',
           natives,
           javaProperties: [
             'java.library.path=/app/natives',
             'os.arch=amd64',
             'sun.arch.data.model=64',
-            `java.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
-            `java.specification.version=${CHEERPJ_RUNTIME_VERSION}`,
-            `java.vm.version=${CHEERPJ_RUNTIME_VERSION}.0.0`,
             'org.lwjgl.system.allocator=system',
           ],
         });
