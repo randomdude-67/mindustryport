@@ -5,6 +5,7 @@ set -e
 # ~12 MB) because GitHub's release-assets CDN throttles Vercel's build IPs and
 # silently returns ~100-byte HTML stubs — which would clobber a real download.
 # Only fetch when the file is missing or implausibly small.
+MINDUSTRY_FRESHLY_DOWNLOADED=0
 DEPS_FRESHLY_DOWNLOADED=0
 
 fetch_jar() {
@@ -24,49 +25,79 @@ fetch_jar() {
 }
 
 fetch_jar Mindustry.jar \
-  https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar || true
+  https://github.com/Anuken/Mindustry/releases/download/v157.4/Mindustry.jar \
+  && MINDUSTRY_FRESHLY_DOWNLOADED=1 || true
 fetch_jar dependencies.jar \
   https://github.com/Anuken/Mindustry/releases/download/v157.4/dependencies.jar \
   && DEPS_FRESHLY_DOWNLOADED=1 || true
 
-# Mindustry's DesktopLauncher.checkJavaVersion() requires
-# OS.javaVersionNumber >= 17, and OS.<clinit> parses System.getProperty(
-# "java.version") into that field. CheerpJ ignores java.version overrides
-# and pins it to the legacy "1.8.0_xxx" format, so OS.<clinit> takes the
-# startsWith("1.") branch and hardcodes javaVersionNumber to 8.
+# Mindustry's DesktopLauncher.checkJavaVersion() fatally errors when
+# arc.util.OS.javaVersionNumber < 17, and OS.<clinit> parses
+# System.getProperty("java.version") into that field. CheerpJ reports
+# java.version as "8" / "8.0.0" (not "1.8.0_xxx"), and ignores all of our
+# javaProperties + System.setProperty overrides. The override classpath
+# doesn't work either (Vercel can't serve directory listings, so CheerpJ's
+# probe of `/override` 404s). So we patch both JARs in place:
 #
-# Patching the class via the override classpath doesn't work — Vercel can't
-# serve a directory listing, so CheerpJ's HEAD on `/override` 404s and the
-# entry is silently dropped. Instead we patch the class *inside*
-# dependencies.jar (replacing the single `bipush 8` with `bipush 25`). The
-# patched JAR is committed, so we only re-patch when the JAR was just
-# downloaded fresh — that way the build doesn't need python3 in the common
-# case where the committed (already-patched) JAR is used as-is.
-if [ "$DEPS_FRESHLY_DOWNLOADED" = "1" ]; then
-echo "--- Patching arc/util/OS.class inside dependencies.jar ---"
+#   - Mindustry.jar: the first byte of DesktopLauncher.checkJavaVersion's
+#     bytecode is flipped from `getstatic` (0xb2) to `return` (0xb1), making
+#     the whole gate a no-op regardless of OS.javaVersionNumber.
+#
+#   - dependencies.jar: the `bipush 8` inside OS.<clinit>'s legacy-format
+#     branch (`java.version.startsWith("1.")`) is flipped to `bipush 25`.
+#     Belt-and-suspenders — currently dead under CheerpJ but keeps things
+#     correct if CheerpJ ever switches to reporting "1.8.0_xxx".
+#
+# Both patches are committed; the python step only runs when a JAR was just
+# downloaded fresh (so local rebuilds without python work fine).
+if [ "$MINDUSTRY_FRESHLY_DOWNLOADED" = "1" ] || [ "$DEPS_FRESHLY_DOWNLOADED" = "1" ]; then
+echo "--- Patching JARs ---"
+MINDUSTRY_FRESHLY_DOWNLOADED="$MINDUSTRY_FRESHLY_DOWNLOADED" \
+DEPS_FRESHLY_DOWNLOADED="$DEPS_FRESHLY_DOWNLOADED" \
 python3 - <<'PY'
-import zipfile, sys, shutil, os
-unpatched = b"\x99\x00\x08\x10\x08\xa7\x00\x2d"  # ifeq +8; bipush 8;  goto +45
-patched   = b"\x99\x00\x08\x10\x19\xa7\x00\x2d"  # ifeq +8; bipush 25; goto +45
-with zipfile.ZipFile("dependencies.jar") as z:
-    cls = z.read("arc/util/OS.class")
-if patched in cls and cls.count(patched) == 1 and unpatched not in cls:
-    print("dependencies.jar already patched; skipping")
-    sys.exit(0)
-if cls.count(unpatched) != 1:
-    sys.exit(f"OS.class patch site not unique: unpatched={cls.count(unpatched)} patched={cls.count(patched)}")
-new_cls = cls.replace(unpatched, patched)
-# Rewrite the JAR with the one entry replaced (zipfile can't update in place).
-tmp = "dependencies.jar.tmp"
-with zipfile.ZipFile("dependencies.jar") as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
-    for item in zin.infolist():
-        data = new_cls if item.filename == "arc/util/OS.class" else zin.read(item.filename)
-        zout.writestr(item, data)
-os.replace(tmp, "dependencies.jar")
-print("patched dependencies.jar: arc/util/OS.class bipush 8 -> 25")
+import os, sys, zipfile
+
+PATCHES = [
+    # (jar, class entry, unpatched bytes, patched bytes, description, env-flag)
+    (
+        "Mindustry.jar",
+        "mindustry/desktop/DesktopLauncher.class",
+        b"\xb2\x00\x43\x10\x11\xa2\x00\x20",  # getstatic OS.javaVersionNumber; bipush 17; if_icmpge 37
+        b"\xb1\x00\x43\x10\x11\xa2\x00\x20",  # return; dead bytes
+        "DesktopLauncher.checkJavaVersion -> immediate return",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
+    (
+        "dependencies.jar",
+        "arc/util/OS.class",
+        b"\x99\x00\x08\x10\x08\xa7\x00\x2d",  # ifeq +8; bipush 8;  goto +45
+        b"\x99\x00\x08\x10\x19\xa7\x00\x2d",  # ifeq +8; bipush 25; goto +45
+        "OS.<clinit> legacy branch -> bipush 25",
+        "DEPS_FRESHLY_DOWNLOADED",
+    ),
+]
+
+for jar, entry, unp, p, desc, env in PATCHES:
+    if os.environ.get(env) != "1":
+        continue
+    with zipfile.ZipFile(jar) as z:
+        cls = z.read(entry)
+    if p in cls and cls.count(p) == 1 and unp not in cls:
+        print(f"{jar}: {desc}: already patched")
+        continue
+    if cls.count(unp) != 1:
+        sys.exit(f"{jar}: {entry} patch site not unique (unpatched={cls.count(unp)} patched={cls.count(p)})")
+    new_cls = cls.replace(unp, p)
+    tmp = jar + ".tmp"
+    with zipfile.ZipFile(jar) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = new_cls if item.filename == entry else zin.read(item.filename)
+            zout.writestr(item, data)
+    os.replace(tmp, jar)
+    print(f"{jar}: {desc}: patched")
 PY
 else
-  echo "dependencies.jar was reused from the repo (already patched); skipping JAR patch"
+  echo "Both JARs reused from the repo (already patched); skipping JAR patches"
 fi
 
 echo "--- Build complete ---"
