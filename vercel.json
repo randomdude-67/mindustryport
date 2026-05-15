@@ -1,4 +1,10 @@
 {
   "buildCommand": "bash build.sh",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/cheerpj/:path*",
+      "destination": "https://cjrtnc.leaningtech.com/4.3/:path*"
+    }
+  ]
 }

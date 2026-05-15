@@ -183,10 +183,15 @@
         attachCanvas(display);
 
         setStatus('Loading CheerpJ runtime…');
-        // CheerpJ 4 loader
+        // Locally-hosted loader + patched cheerpOS.js (see /cheerpj/). All
+        // other CheerpJ assets are proxied to leaningtech's CDN via the
+        // /cheerpj/* rewrite in vercel.json. `cj3LoaderPath` is derived from
+        // wherever this script tag's URL points, so serving loader.js from
+        // /cheerpj/ makes every subsequent CheerpJ asset (cj3.js, cj3.wasm,
+        // cheerpOS.js, the JRE jars) resolve under /cheerpj/ on our origin.
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
-          s.src = 'https://cjrtnc.leaningtech.com/4.3/loader.js';
+          s.src = './cheerpj/loader.js';
           s.onload = resolve;
           s.onerror = reject;
           document.head.appendChild(s);
