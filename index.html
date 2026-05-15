@@ -183,16 +183,6 @@
         });
         stdlib = await cheerpjRunLibrary('');
 
-        // arc.util.OS.<clinit> parses System.getProperty("java.version") and
-        // Mindustry's DesktopLauncher.checkJavaVersion() refuses to run when
-        // that's < 25. CheerpJ pins java.version to "1.8.0_xxx" and ignores
-        // the javaProperties override, so we set it on the live System after
-        // init — arc.util.OS hasn't been loaded yet, so this wins.
-        const System = await stdlib.java.lang.System;
-        await System.setProperty('java.version', '25.0.0');
-        await System.setProperty('java.specification.version', '25');
-        await System.setProperty('java.vm.version', '25.0.0');
-
         setStatus('Starting Mindustry…');
         loader.classList.add('fade-out');
 
