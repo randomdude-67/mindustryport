@@ -178,6 +178,14 @@
             'java.library.path=/app/natives',
             'os.arch=amd64',
             'sun.arch.data.model=64',
+            // Mindustry's DesktopLauncher.checkJavaVersion() refuses to start
+            // unless System.getProperty("java.version") parses to >= 25. The
+            // JARs are Java 8 bytecode so this is purely a runtime check we
+            // can satisfy by spoofing the reported version; the underlying
+            // CheerpJ runtime stays at its Java 8 default.
+            'java.version=25.0.0',
+            'java.specification.version=25',
+            'java.vm.version=25.0.0',
             'org.lwjgl.system.allocator=system',
           ],
         });
