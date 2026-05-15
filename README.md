@@ -8,5 +8,6 @@ Notes:
 - Mindustry `v157.4` ships both `Mindustry.jar` and `dependencies.jar`; the web launcher now uses an explicit classpath plus `cheerpjRunMain(...)`.
 - Arc's `System.loadLibrary("arc")` and `System.loadLibrary("sdl-arc")` calls are now routed through `/app/natives` JS modules via `java.library.path=/app/natives`.
 - `override/scripts/global.js` now shadows Mindustry's bundled Rhino bootstrap with a much smaller compatibility script so startup can proceed without full JavaScript mod support.
+- `stubs/netscape/javascript/{JSObject,JSException}.java` provide a minimal LiveConnect placeholder. CheerpJ's JDK doesn't ship `javafx.web`, so a class somewhere in its image fails class verification with `NoClassDefFoundError: netscape/javascript/JSObject` during init. `build.sh` compiles these into `override/netscape/javascript/*.class` so the override classpath satisfies the verifier; the methods are never actually invoked.
 - The current web port only shims the SDL / OpenGL native layer. Arc native libraries such as FreeType and Soloud are still a larger compatibility gap.
 - If you still see `ERR_CACHE_OPERATION_NOT_SUPPORTED`, test with browser cache disabling turned off and clear any old service workers registered for this site.
