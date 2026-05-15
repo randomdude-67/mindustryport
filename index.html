@@ -56,45 +56,25 @@
     import sdlglNatives from './natives/sdlgl.js';
 
     // ── CheerpJ blob-MIME workaround ─────────────────────────────────────────
-    // CheerpJ probes for `JNI_OnLoad` of every native library a Java class
-    // declares. The probe creates an in-memory JS module via `new Blob([code])`
-    // (no MIME type) and then `import(URL.createObjectURL(blob))`. Chrome's
-    // strict module-MIME check refuses any module whose blob has `type === ''`
-    // and the worker hangs with "MIME type of 'null'".
+    // CheerpJ loads library JS via `import(URL.createObjectURL(blob))`. The
+    // blob is built in `cheerpOSGetFileBlobFd`:
     //
-    // The Blob is constructed inside CheerpJ's Web Worker, where main-thread
-    // monkey-patches don't reach. So we intercept `new Worker(url)` itself:
-    // re-emit a wrapper script that first re-defines `URL.createObjectURL` in
-    // the worker scope, then loads the original worker code. Both module
-    // workers (top-level await + dynamic import) and classic workers
-    // (importScripts) are handled.
+    //   var mimeType = null;
+    //   var m = cheerpOSMimeMap[ext];
+    //   if (m) mimeType = m;
+    //   var blob = new Blob([buf], { type: mimeType });
+    //
+    // Their MIME map only covers a handful of extensions (js, html, png, …).
+    // For any other extension (or a path with no extension), `mimeType` stays
+    // `null`; `String(null) === "null"`, so `blob.type` ends up as the literal
+    // four-character string `"null"`. Chrome's strict module-MIME check then
+    // rejects the import with `MIME type of "null"`. We fix it by re-wrapping
+    // typeless / `"null"`-typed blobs as `text/javascript` before the import
+    // ever sees the URL.
     {
-      const WORKER_PATCH = `
-        const __cj_origCreateObjectURL = URL.createObjectURL.bind(URL);
-        URL.createObjectURL = (obj) => {
-          if (obj instanceof Blob && obj.type === '') {
-            obj = new Blob([obj], { type: 'text/javascript' });
-          }
-          return __cj_origCreateObjectURL(obj);
-        };
-      `;
-      const OrigWorker = self.Worker;
-      self.Worker = class extends OrigWorker {
-        constructor(url, opts) {
-          const urlStr = String(url);
-          const isModule = !!(opts && opts.type === 'module');
-          const loader = isModule
-            ? 'await import(' + JSON.stringify(urlStr) + ');'
-            : 'importScripts(' + JSON.stringify(urlStr) + ');';
-          const wrapper = WORKER_PATCH + '\n' + loader;
-          const blob = new Blob([wrapper], { type: 'text/javascript' });
-          super(URL.createObjectURL(blob), opts);
-        }
-      };
-      // Same patch on the main thread, in case CheerpJ does any imports here.
       const orig = URL.createObjectURL.bind(URL);
       URL.createObjectURL = (obj) => {
-        if (obj instanceof Blob && obj.type === '') {
+        if (obj instanceof Blob && (obj.type === '' || obj.type === 'null')) {
           obj = new Blob([obj], { type: 'text/javascript' });
         }
         return orig(obj);
