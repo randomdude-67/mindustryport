@@ -179,34 +179,46 @@ import zipfile, os, sys
 
 MARKER = "META-INF/STRIPPED_FOR_WEB"
 
-def should_remove(name):
+# Two strategies per file:
+#   REMOVE_FULLY: entry deleted entirely. Safe only when Mindustry never
+#       opens the path (e.g. native .so/.dll, since SharedLibraryLoader.load
+#       is bytecode-patched to no-op).
+#   ZERO_BYTES: entry kept with 0-byte content. Safe when something opens
+#       the file (Fi.read / Fi.length) but doesn't actually decode the bytes
+#       (e.g. .woff fonts — FreeType is stubbed, never reads the data;
+#       .ogg music — Soloud is stubbed, never decodes).
+def strategy(name):
     low = name.lower()
-    if low.endswith(('.ogg', '.so', '.dll', '.dylib', '.jnilib', '.woff', '.woff2')):
-        return True
+    if low.endswith(('.so', '.dll', '.dylib', '.jnilib')):
+        return 'REMOVE'
+    if low.endswith(('.ogg', '.woff', '.woff2')):
+        return 'ZERO'
     if low.startswith('sounds/'):
-        return True
-    return False
+        return 'ZERO'
+    return 'KEEP'
 
 try:
     with zipfile.ZipFile("Mindustry.jar") as z:
         if MARKER in z.namelist():
             print("Mindustry.jar already stripped; skipping")
             sys.exit(0)
-        entries = z.namelist()
-    removed = [n for n in entries if should_remove(n)]
-    kept    = [n for n in entries if not should_remove(n)]
-    if not removed:
-        print("nothing to strip")
-        sys.exit(0)
+    removed = zeroed = kept = 0
     with zipfile.ZipFile("Mindustry.jar") as zin, \
          zipfile.ZipFile("Mindustry.jar.tmp", "w", zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
-            if should_remove(item.filename):
+            s = strategy(item.filename)
+            if s == 'REMOVE':
+                removed += 1
                 continue
-            zout.writestr(item, zin.read(item.filename))
+            if s == 'ZERO':
+                zout.writestr(item.filename, b"")
+                zeroed += 1
+            else:
+                zout.writestr(item, zin.read(item.filename))
+                kept += 1
         zout.writestr(MARKER, b"")
     os.replace("Mindustry.jar.tmp", "Mindustry.jar")
-    print(f"stripped {len(removed)} entries ({sum(1 for _ in removed)} files), kept {len(kept)}")
+    print(f"stripped: {removed} removed, {zeroed} zeroed, {kept} kept")
 except Exception as e:
     print(f"strip failed (not fatal): {e}", file=sys.stderr)
 PY
