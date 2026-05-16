@@ -220,7 +220,19 @@ const methods = {
     return state.glContextHandle;
   },
   'SDL_GL_SetSwapInterval': async (lib, on) => 0,
-  'SDL_GL_SwapWindow':      async (lib, win) => { /* WebGL auto-presents */ },
+  'SDL_GL_SwapWindow': async (lib, win) => {
+    // WebGL auto-presents at the end of the JS turn. Diagnostic counter so we
+    // can tell from the console whether the render loop is running. Logs once
+    // a second so the log isn't flooded.
+    state.frameCount = (state.frameCount || 0) + 1;
+    const now = performance.now();
+    if (!state.lastFrameLog || now - state.lastFrameLog > 1000) {
+      const fps = state.frameCount - (state.lastFrameCount || 0);
+      console.log('[render] frame ' + state.frameCount + ' (~' + fps + ' fps, canvas ' + state.width + 'x' + state.height + ', gl=' + (!!state.gl) + ')');
+      state.lastFrameLog = now;
+      state.lastFrameCount = state.frameCount;
+    }
+  },
   'SDL_GL_GetDrawableSize': async (lib, win, arr) => writeIntArray(arr, [state.width, state.height]),
 };
 
