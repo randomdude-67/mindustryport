@@ -127,8 +127,15 @@ const m = {
   init: async (lib) => null,
 
   // ── Per-frame state ────────────────────────────────────────────────────────
-  glClear:        async (lib, mask) => gl().clear(mask),
-  glClearColor:   async (lib, r, g, b, a) => gl().clearColor(r, g, b, a),
+  glClear: async (lib, mask) => {
+    state.lastClearMask = mask;
+    state.clearCount = (state.clearCount || 0) + 1;
+    gl().clear(mask);
+  },
+  glClearColor: async (lib, r, g, b, a) => {
+    state.lastClearColor = [r, g, b, a];
+    gl().clearColor(r, g, b, a);
+  },
   glClearDepthf:  async (lib, d) => gl().clearDepth(d),
   glClearStencil: async (lib, s) => gl().clearStencil(s),
   glColorMask:    async (lib, r, g, b, a) => gl().colorMask(!!r, !!g, !!b, !!a),
@@ -378,8 +385,12 @@ const m = {
   glGetUniformiv: async () => {},
 
   // ── Drawing ────────────────────────────────────────────────────────────────
-  glDrawArrays: async (lib, m, f, c) => gl().drawArrays(m, f, c),
+  glDrawArrays: async (lib, m, f, c) => {
+    state.drawCalls = (state.drawCalls || 0) + 1;
+    gl().drawArrays(m, f, c);
+  },
   glDrawElements: async (lib, mode, count, type, indices) => {
+    state.drawCalls = (state.drawCalls || 0) + 1;
     if (typeof indices === 'number') gl().drawElements(mode, count, type, indices);
     else gl().drawElements(mode, count, type, 0);
   },
