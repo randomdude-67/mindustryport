@@ -75,6 +75,30 @@ PATCHES = [
         "SdlApplication.initIcon -> no-op (window icon irrelevant in browser, Pixmap.load is unimplemented)",
         "MINDUSTRY_FRESHLY_DOWNLOADED",
     ),
+    (
+        "Mindustry.jar",
+        "mindustry/desktop/DesktopLauncher.class",
+        b"\xb2\x00\xcd\x99\x00\x09\xb2\x01\x16",  # getstatic Vars.steam; ifeq +9; getstatic SVars.net
+        b"\x01\xb0\xcd\x99\x00\x09\xb2\x01\x16",  # aconst_null; areturn; dead bytes
+        "DesktopLauncher.getNet -> return null (skips ArcNetProvider, which depends on epoll/UDP that CheerpJ lacks). Singleplayer/campaign/editor work; multiplayer parked in MULTIPLAYER.md.",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
+    (
+        "Mindustry.jar",
+        "net/jpountz/util/Native.class",
+        b"\xb2\x00\x24\x99\x00\x04\xb1\xb8\x00\x34",  # getstatic loaded; ifeq +4; return; invokestatic cleanupOldTempLibs
+        b"\xb1\x00\x24\x99\x00\x04\xb1\xb8\x00\x34",  # return; dead bytes
+        "lz4-java Native.load -> immediate return (skips loadLibrary that would crash on CheerpJ)",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
+    (
+        "dependencies.jar",
+        "net/jpountz/util/Native.class",
+        b"\xb2\x00\x24\x99\x00\x04\xb1\xb8\x00\x34",
+        b"\xb1\x00\x24\x99\x00\x04\xb1\xb8\x00\x34",
+        "lz4-java Native.load -> immediate return (also in deps jar)",
+        "DEPS_FRESHLY_DOWNLOADED",
+    ),
     # arc/util/OS.class and arc/util/SharedLibraryLoader.class are present in
     # BOTH Mindustry.jar AND dependencies.jar. The classpath order is
     # `/app/override:/app/Mindustry.jar:/app/dependencies.jar`, so the copy in
