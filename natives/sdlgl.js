@@ -127,8 +127,8 @@ const m = {
   init: (lib) => null,
 
   // ── Per-frame state ────────────────────────────────────────────────────────
-  glClear: (lib, mask) => gl().clear(mask),
-  glClearColor: (lib, r, g, b, a) => gl().clearColor(r, g, b, a),
+  glClear: (lib, mask) => { state.clearCount = (state.clearCount || 0) + 1; gl().clear(mask); },
+  glClearColor: (lib, r, g, b, a) => { state.lastClearColor = [r, g, b, a]; gl().clearColor(r, g, b, a); },
   glClearDepthf:  (lib, d) => gl().clearDepth(d),
   glClearStencil: (lib, s) => gl().clearStencil(s),
   glColorMask:    (lib, r, g, b, a) => gl().colorMask(!!r, !!g, !!b, !!a),
@@ -378,9 +378,14 @@ const m = {
   glGetUniformiv: () => {},
 
   // ── Drawing ────────────────────────────────────────────────────────────────
-  glDrawArrays: (lib, m, f, c) => gl().drawArrays(m, f, c),
-  glDrawElements: (lib, mode, count, type, indices) =>
-    gl().drawElements(mode, count, type, typeof indices === 'number' ? indices : 0),
+  glDrawArrays: (lib, m, f, c) => {
+    state.drawCalls = (state.drawCalls || 0) + 1;
+    gl().drawArrays(m, f, c);
+  },
+  glDrawElements: (lib, mode, count, type, indices) => {
+    state.drawCalls = (state.drawCalls || 0) + 1;
+    gl().drawElements(mode, count, type, typeof indices === 'number' ? indices : 0);
+  },
   glDrawArraysInstanced: (lib, m, f, c, ic) => gl().drawArraysInstanced?.(m, f, c, ic),
   glDrawElementsInstanced: (lib, m, c, t, off, ic) => gl().drawElementsInstanced?.(m, c, t, off, ic),
   glReadPixels: (lib, x, y, w, h, fmt, type, out) => gl().readPixels(x, y, w, h, fmt, type, asTypedArray(out)),

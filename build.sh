@@ -162,4 +162,53 @@ else
   echo "Both JARs reused from the repo (already patched); skipping JAR patches"
 fi
 
+# Strip useless bloat from Mindustry.jar. We have:
+#   - ~25 MB of music/.ogg + sounds/.ogg files we never play (audio is stubbed)
+#   - ~15 MB of native libraries (.so/.dll/.dylib/.jnilib) that don't run in
+#     a browser at all
+#   - ~7 MB of .woff fonts (FreeType is stubbed; the woff bytes are never read)
+# Total ~55 MB out of a 108 MB JAR. Removing them halves CheerpJ's JAR index
+# work and the bytes Mindustry's AssetManager has to traverse. If Mindustry's
+# loader crashes on a missing asset, we fall back to the "replace with empty
+# bytes" strategy (paths still resolve, contents are 0 bytes).
+#
+# Idempotent: detects via a marker file inside the JAR whether already stripped.
+echo "--- Stripping Mindustry.jar bloat ---"
+python3 - <<'PY'
+import zipfile, os, sys
+
+MARKER = "META-INF/STRIPPED_FOR_WEB"
+
+def should_remove(name):
+    low = name.lower()
+    if low.endswith(('.ogg', '.so', '.dll', '.dylib', '.jnilib', '.woff', '.woff2')):
+        return True
+    if low.startswith('sounds/'):
+        return True
+    return False
+
+try:
+    with zipfile.ZipFile("Mindustry.jar") as z:
+        if MARKER in z.namelist():
+            print("Mindustry.jar already stripped; skipping")
+            sys.exit(0)
+        entries = z.namelist()
+    removed = [n for n in entries if should_remove(n)]
+    kept    = [n for n in entries if not should_remove(n)]
+    if not removed:
+        print("nothing to strip")
+        sys.exit(0)
+    with zipfile.ZipFile("Mindustry.jar") as zin, \
+         zipfile.ZipFile("Mindustry.jar.tmp", "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            if should_remove(item.filename):
+                continue
+            zout.writestr(item, zin.read(item.filename))
+        zout.writestr(MARKER, b"")
+    os.replace("Mindustry.jar.tmp", "Mindustry.jar")
+    print(f"stripped {len(removed)} entries ({sum(1 for _ in removed)} files), kept {len(kept)}")
+except Exception as e:
+    print(f"strip failed (not fatal): {e}", file=sys.stderr)
+PY
+
 echo "--- Build complete ---"
