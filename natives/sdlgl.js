@@ -92,9 +92,11 @@ async function nioBufferToBytes(buf, hintedSize) {
   if (buf instanceof Uint8Array) return buf;
   if (ArrayBuffer.isView(buf)) return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   if (buf instanceof ArrayBuffer) return new Uint8Array(buf);
-  // Fast path: JS-side shadow attached in newDisposableByteBuffer.
-  if (buf.__jsShadow instanceof Uint8Array) {
-    return hintedSize ? buf.__jsShadow.subarray(0, hintedSize | 0) : buf.__jsShadow;
+  // Fast path: JS-side shadow registered in newDisposableByteBuffer.
+  // (See natives/arc.js — WeakMap keyed by the CheerpJ ByteBuffer proxy.)
+  const shadow = globalThis.__bufShadows && globalThis.__bufShadows.get(buf);
+  if (shadow instanceof Uint8Array) {
+    return hintedSize ? shadow.subarray(0, hintedSize | 0) : shadow;
   }
   // Java int[]/byte[] arrays expose `.length` + indexed access directly.
   if ('length' in buf && typeof buf.length === 'number' && !buf.capacity) {

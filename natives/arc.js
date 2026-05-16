@@ -21,6 +21,13 @@ function makeNoopStub(name) {
 let nextHandle = 1;
 const allocHandle = () => nextHandle++;
 
+// JS-side shadow Uint8Arrays for ByteBuffers we allocated via newDisposable.
+// Lives on globalThis so sdlgl.js can read from the same map. Attaching the
+// shadow as a property on the ByteBuffer proxy didn't survive across calls
+// (CheerpJ recreates JS wrappers), but WeakMap by-identity does.
+if (!globalThis.__bufShadows) globalThis.__bufShadows = new WeakMap();
+const bufShadows = globalThis.__bufShadows;
+
 // arc.util.Buffers' native methods. These can't be no-op'd: callers expect a
 // real java.nio.ByteBuffer back, and dereference / .order() it immediately.
 // We allocate via Java's own ByteBuffer.allocateDirect through the CheerpJ
@@ -30,11 +37,10 @@ const bufferNatives = {
   async Java_arc_util_Buffers_newDisposableByteBuffer(lib, capacity) {
     const ByteBuffer = await lib.java.nio.ByteBuffer;
     const buf = await ByteBuffer.allocateDirect(capacity | 0);
-    // Attach a JS-side shadow Uint8Array so sdlgl.js can hand it directly to
-    // gl.bufferData / gl.texImage2D without an async per-byte read. copyJni
-    // mirrors writes into this shadow so the JS view stays in sync with the
-    // Java NIO buffer.
-    try { buf.__jsShadow = new Uint8Array(capacity | 0); } catch {}
+    // Register a JS-side shadow Uint8Array via WeakMap so subsequent copyJni
+    // / bufferData calls can do a fast bulk copy instead of going byte-by-byte
+    // through the CheerpJ bridge.
+    try { bufShadows.set(buf, new Uint8Array(capacity | 0)); } catch {}
     return buf;
   },
   async Java_arc_util_Buffers_freeMemory(lib, buf) {
@@ -211,9 +217,16 @@ const bufferNatives = {
   },
   async Java_arc_freetype_FreeType_00024Face_getKerning(lib, h, l, r, mode) { return 0; },
 
-  // Stroker / Glyph cleanup
+  // GlyphSlot (Face's currently-loaded glyph) — Arc reads its metrics + glyph.
+  async Java_arc_freetype_FreeType_00024GlyphSlot_getGlyph(lib, h) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024GlyphSlot_getMetrics(lib, h) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Size_getMetrics(lib, h) { return allocHandle(); },
+
+  // Stroker setup / cleanup
+  async Java_arc_freetype_FreeType_00024Stroker_set(lib, h, radius, lineCap, lineJoin, miterLimit) {},
   async Java_arc_freetype_FreeType_00024Stroker_done(lib, h) {},
   async Java_arc_freetype_FreeType_00024Glyph_done(lib, h) {},
+  async Java_arc_freetype_FreeType_00024Library_doneFreeType(lib, h) {},
 
   // Buffers.copyJni overloads. Without these the mesh upload path goes to our
   // auto-stub which silently drops the copy → WebGL sees an empty VBO → every
@@ -251,38 +264,26 @@ const bufferNatives = {
         }
         return src[srcOff + i];
       };
-      // Fast path: if dst has a JS shadow and src is a JS-accessible array
-      // (Java byte[]/short[]/int[]/float[] expose .length + numeric indexing
-      // synchronously), copy directly into the shadow with NO async awaits.
-      // ~1000× faster than the bridge-per-byte path. WebGL reads from the
-      // shadow via nioBufferToBytes, so the Java buffer being un-mirrored
-      // doesn't matter unless Mindustry reads the buffer back (rare).
-      const shadow = dst.__jsShadow;
-      const srcSync = src && 'length' in src && typeof src.length === 'number'
-                    && typeof src.get !== 'function';
+      const shadow = bufShadows.get(dst);
       const n = count | 0;
-      // One-time diagnostic so we know what path real copyJni calls take.
-      if (!globalThis.__copyJniDiag) {
-        globalThis.__copyJniDiag = { fast: 0, slow: 0 };
-      }
-      const d = globalThis.__copyJniDiag;
-      if (shadow && srcSync) {
-        d.fast++;
-        if (d.fast + d.slow < 8 || (d.fast + d.slow) % 200 === 0) {
-          console.log('[copyJni] fast', { count: n, fast: d.fast, slow: d.slow,
-            shadowLen: shadow.length, srcLen: src.length });
-        }
-        for (let i = 0; i < n; i++) shadow[dstOff + i] = src[srcOff + i] & 0xff;
+      // Fast path: src is a JS TypedArray (Float32Array, Int32Array,
+      // Int16Array, Uint8Array — CheerpJ converts Java primitive arrays to
+      // these on the boundary). We can compute the byte view directly and do
+      // a single Uint8Array.set() bulk copy. WebGL reads from the shadow via
+      // nioBufferToBytes, so the Java buffer being un-mirrored doesn't matter
+      // unless Mindustry reads the buffer back (rare).
+      if (shadow && ArrayBuffer.isView(src)) {
+        const bpe = src.BYTES_PER_ELEMENT || 1;
+        const srcBytes = new Uint8Array(src.buffer, src.byteOffset + srcOff * bpe, n * bpe);
+        shadow.set(srcBytes, dstOff);
         return;
       }
-      d.slow++;
-      if (d.fast + d.slow < 8 || (d.fast + d.slow) % 200 === 0) {
-        console.log('[copyJni] SLOW', { count: n, fast: d.fast, slow: d.slow,
-          dstHasShadow: !!shadow,
-          srcHasLength: src && 'length' in src,
-          srcLengthType: src && typeof src.length,
-          srcHasGet: src && typeof src.get === 'function',
-          srcCtorName: src && src.constructor && src.constructor.name });
+      // Medium path: src is a Java/JS array-like with numeric indexing but
+      // not a typed array (rare). Walk it synchronously into the shadow.
+      if (shadow && src && 'length' in src && typeof src.length === 'number'
+          && typeof src.get !== 'function') {
+        for (let i = 0; i < n; i++) shadow[dstOff + i] = src[srcOff + i] & 0xff;
+        return;
       }
       // Fallback: async bridge reads/writes (slow but correct).
       for (let i = 0; i < n; i++) {
