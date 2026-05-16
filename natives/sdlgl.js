@@ -260,10 +260,28 @@ const m = {
     s = s.replace(/\btextureCube\b/g, 'texture');
     return gl().shaderSource(reg.shader.get(id), s);
   },
-  glCompileShader: async (lib, id) => gl().compileShader(reg.shader.get(id)),
+  glCompileShader: async (lib, id) => {
+    const sh = reg.shader.get(id);
+    gl().compileShader(sh);
+    // Diagnostic: log compile result + first 200 chars of the source on
+    // failure so we can tell whether the compile genuinely failed or our
+    // status read-back is wrong. Remove once shader path is stable.
+    if (!gl().getShaderParameter(sh, gl().COMPILE_STATUS)) {
+      const log = gl().getShaderInfoLog(sh) || '(empty)';
+      const src = gl().getShaderSource(sh) || '(no source)';
+      console.error('[glCompileShader] FAILED:', log, '\n--- source (first 400 chars) ---\n' + src.slice(0, 400));
+    }
+  },
   glGetShaderiv: async (lib, s, pname, out) => {
     const v = gl().getShaderParameter(reg.shader.get(s), pname);
-    const arr = I32(out); if (arr) arr[0] = typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0);
+    const intVal = typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0);
+    // Try direct index assignment AND a couple of other paths so whichever
+    // CheerpJ wrapper representation `out` actually is, at least one write
+    // hits the real Java memory.
+    if (out) {
+      try { out[0] = intVal; } catch {}
+      if (typeof out.set === 'function') { try { out.set(0, intVal); } catch {} }
+    }
   },
   glGetShaderInfoLog: async (lib, s) => gl().getShaderInfoLog(reg.shader.get(s)) || '',
   glGetShaderPrecisionFormat: async () => {},
