@@ -21,6 +21,36 @@ function makeNoopStub(name) {
 let nextHandle = 1;
 const allocHandle = () => nextHandle++;
 
+// arc.util.Buffers' native methods. These can't be no-op'd: callers expect a
+// real java.nio.ByteBuffer back, and dereference / .order() it immediately.
+// We allocate via Java's own ByteBuffer.allocateDirect through the CheerpJ
+// runtime handle (`lib`), which gives Mindustry a usable buffer object even
+// though there's no real off-heap memory underneath in the browser.
+const bufferNatives = {
+  async Java_arc_util_Buffers_newDisposableByteBuffer(lib, capacity) {
+    const ByteBuffer = await lib.java.nio.ByteBuffer;
+    return await ByteBuffer.allocateDirect(capacity | 0);
+  },
+  async Java_arc_util_Buffers_freeMemory(lib, buf) {
+    // No-op: GC will collect when the Java reference is dropped.
+  },
+  async Java_arc_util_Buffers_getBufferAddress(lib, buf) {
+    // Non-zero placeholder. Arc's `getUnsafeBufferAddress` adds `position()`
+    // and uses the result as a JNI handle; nothing in the WebGL path actually
+    // dereferences this on the JS side, so any unique non-zero value works.
+    return allocHandle();
+  },
+  async Java_arc_util_Buffers_clear(lib, buf, count) {
+    if (!buf) return;
+    // Best-effort: zero out [position..position+count) via buf.put(zero) loop.
+    // Falls back to a no-op if the bridge doesn't expose those methods.
+    try {
+      const pos = await buf.position();
+      for (let i = 0; i < count; i++) await buf.put(pos + i, 0);
+    } catch {}
+  },
+};
+
 const soloudStubs = {
   async Java_arc_audio_Soloud_init() {
     logArc('Soloud.init() stubbed');
@@ -89,7 +119,11 @@ const soloudStubs = {
   async Java_arc_audio_Soloud_freeverbSet() {},
 };
 
-const nativeImpls = new Proxy(soloudStubs, {
+// Concrete implementations win; soloudStubs cover audio; Proxy auto-stubs
+// anything else under Java_arc_* as a no-op.
+const concreteImpls = { ...bufferNatives, ...soloudStubs };
+
+const nativeImpls = new Proxy(concreteImpls, {
   get(target, prop, receiver) {
     if (Reflect.has(target, prop)) {
       return Reflect.get(target, prop, receiver);
