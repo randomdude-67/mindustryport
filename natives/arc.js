@@ -155,20 +155,65 @@ const bufferNatives = {
   async Java_arc_freetype_FreeType_00024Glyph_strokeBorder(lib, glyph, stroker, inside) { return allocHandle(); },
   async Java_arc_freetype_FreeType_00024Glyph_toBitmap(lib, glyph, renderMode) { return allocHandle(); },
   async Java_arc_freetype_FreeType_00024Glyph_getBitmap(lib, h) { return allocHandle(); },
+  // 8x8 single-channel grayscale bitmap, fully opaque. Arc validates the
+  // resulting glyphs to compute font metrics (x-height, line height); empty
+  // bitmaps throw "No x-height character found in font". Returning a uniform
+  // filled block makes every character look the same and ugly but lets the
+  // font generator complete. Real per-glyph rendering needs a JS font lib.
   async Java_arc_freetype_FreeType_00024Bitmap_getBuffer(lib, h) {
     const ByteBuffer = await lib.java.nio.ByteBuffer;
-    const buf = await ByteBuffer.allocateDirect(1);
-    try { buf.__jsShadow = new Uint8Array(1); } catch {}
+    const buf = await ByteBuffer.allocateDirect(64);
+    const shadow = new Uint8Array(64); shadow.fill(0xff);
+    try { buf.__jsShadow = shadow; } catch {}
     return buf;
   },
+  async Java_arc_freetype_FreeType_00024Bitmap_getWidth(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Bitmap_getRows(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Bitmap_getPitch(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Bitmap_getPixelMode(lib, h) { return 2; /* FT_PIXEL_MODE_GRAY */ },
+  async Java_arc_freetype_FreeType_00024Bitmap_getNumGray(lib, h) { return 256; },
+
+  // GlyphMetrics — values in 26.6 fixed point (1 pixel = 64 units).
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getWidth(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getHeight(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getHoriBearingX(lib, h) { return 0; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getHoriBearingY(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getHoriAdvance(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getVertBearingX(lib, h) { return 0; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getVertBearingY(lib, h) { return 0; },
+  async Java_arc_freetype_FreeType_00024GlyphMetrics_getVertAdvance(lib, h) { return 8 * 64; },
+
+  // Glyph rect (bitmap_left / bitmap_top after rendering).
+  async Java_arc_freetype_FreeType_00024Bitmap_getLeft(lib, h) { return 0; },
+  async Java_arc_freetype_FreeType_00024Bitmap_getTop(lib, h) { return 8; },
+
+  // SizeMetrics — face-level metrics in 26.6 fixed point.
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getAscender(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getDescender(lib, h) { return -2 * 64; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getHeight(lib, h) { return 10 * 64; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getMaxAdvance(lib, h) { return 8 * 64; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getXppem(lib, h) { return 16; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getYppem(lib, h) { return 16; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getXscale(lib, h) { return 65536; },
+  async Java_arc_freetype_FreeType_00024SizeMetrics_getYscale(lib, h) { return 65536; },
+
+  // Face-level basic info — must return sane non-zero values so Arc can
+  // index glyphs and compute layout.
+  async Java_arc_freetype_FreeType_00024Face_getNumGlyphs(lib, h) { return 256; },
+  async Java_arc_freetype_FreeType_00024Face_getAscender(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Face_getDescender(lib, h) { return -2; },
+  async Java_arc_freetype_FreeType_00024Face_getHeight(lib, h) { return 10; },
+  async Java_arc_freetype_FreeType_00024Face_getMaxAdvanceWidth(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Face_getMaxAdvanceHeight(lib, h) { return 8; },
+  async Java_arc_freetype_FreeType_00024Face_getCharIndex(lib, h, charCode) {
+    // Return a unique non-zero glyph index per char so the cache distinguishes them.
+    return ((charCode | 0) & 0xffff) || 1;
+  },
+  async Java_arc_freetype_FreeType_00024Face_getKerning(lib, h, l, r, mode) { return 0; },
+
   // Stroker / Glyph cleanup
   async Java_arc_freetype_FreeType_00024Stroker_done(lib, h) {},
   async Java_arc_freetype_FreeType_00024Glyph_done(lib, h) {},
-
-  // Default metrics — zero is fine for most queries (no kerning, no advance).
-  // The auto-stub already returns 0, but we add explicit entries so future
-  // tuning is in one place rather than scattered.
-  // (Falling through to the proxy auto-stub is also OK; left here as docs.)
 
   // Buffers.copyJni overloads. Without these the mesh upload path goes to our
   // auto-stub which silently drops the copy → WebGL sees an empty VBO → every
