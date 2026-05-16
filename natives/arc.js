@@ -49,6 +49,61 @@ const bufferNatives = {
       for (let i = 0; i < count; i++) await buf.put(pos + i, 0);
     } catch {}
   },
+
+  // Pixmap natives. Signatures (from javap):
+  //   static native ByteBuffer createJni(long[] handleOut, int w, int h)
+  //   static native ByteBuffer loadJni(long[] handleOut, byte[] data, int off, int len)
+  //   static native void free(long handle)
+  //   static native String getFailureReason()
+  //
+  // createJni allocates a blank RGBA8 buffer for a new Pixmap and writes a
+  // synthetic native handle into handleOut[0]. The Java side stores the
+  // returned ByteBuffer as `Pixmap.pixels`; the handle is opaque to us as
+  // long as `free` accepts it later.
+  async Java_arc_graphics_Pixmap_createJni(lib, handleOut, w, h) {
+    const width = w | 0, height = h | 0;
+    const size = Math.max(0, width * height * 4);
+    const ByteBuffer = await lib.java.nio.ByteBuffer;
+    const buf = await ByteBuffer.allocateDirect(size);
+    const handle = allocHandle();
+    if (handleOut) {
+      // Java long[] supports indexed assignment through CheerpJ.
+      try { handleOut[0] = handle; } catch {}
+      if (typeof handleOut.put === 'function') {
+        try { await handleOut.put(0, handle); } catch {}
+      }
+    }
+    return buf;
+  },
+
+  // Image decode path (PNG/JPG bytes -> raw RGBA). We can't decode
+  // synchronously in JS — createImageBitmap is the only browser-native option
+  // and it's async, plus it doesn't give back pixel bytes without a canvas
+  // round-trip. For now, return an empty RGBA buffer so Mindustry's
+  // Pixmap.<init>(byte[]) doesn't AIOOBE; textures will be blank but the
+  // loading path will continue. Real decode is a follow-up.
+  async Java_arc_graphics_Pixmap_loadJni(lib, handleOut, data, off, len) {
+    const ByteBuffer = await lib.java.nio.ByteBuffer;
+    // 1×1 transparent placeholder; Pixmap reads width/height from this buffer
+    // size indirectly through its own load() path, so keep size = 4 (1 RGBA).
+    const buf = await ByteBuffer.allocateDirect(4);
+    const handle = allocHandle();
+    if (handleOut) {
+      try { handleOut[0] = handle; } catch {}
+      if (typeof handleOut.put === 'function') {
+        try { await handleOut.put(0, handle); } catch {}
+      }
+    }
+    return buf;
+  },
+
+  async Java_arc_graphics_Pixmap_free(lib, handle) {
+    // No-op: the JS GC handles our buffers when Java drops its reference.
+  },
+
+  async Java_arc_graphics_Pixmap_getFailureReason(lib) {
+    return '';
+  },
 };
 
 const soloudStubs = {
