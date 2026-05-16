@@ -101,17 +101,17 @@ function domToScancode(code) {
 // ── JNI method implementations ────────────────────────────────────────────────
 const methods = {
   // ── Init / lifecycle ────────────────────────────────────────────────────────
-  'SDL_Init':           async (lib, flags) => 0,
-  'SDL_InitSubSystem':  async (lib, flags) => 0,
-  'SDL_QuitSubSystem':  async (lib, flags) => {},
-  'SDL_WasInit':        async (lib, flags) => flags, // pretend everything is up
-  'SDL_Quit':           async (lib) => {},
-  'SDL_SetHint':        async (lib, name, value) => true,
-  'SDL_GetError':       async (lib) => state.lastError,
+  'SDL_Init':           (lib, flags) => 0,
+  'SDL_InitSubSystem':  (lib, flags) => 0,
+  'SDL_QuitSubSystem':  (lib, flags) => {},
+  'SDL_WasInit':        (lib, flags) => flags, // pretend everything is up
+  'SDL_Quit':           (lib) => {},
+  'SDL_SetHint':        (lib, name, value) => true,
+  'SDL_GetError':       (lib) => state.lastError,
 
   // ── Version ─────────────────────────────────────────────────────────────────
-  'SDL_GetCompiledVersion': async (lib, arr) => writeIntArray(arr, [2, 28, 0]),
-  'SDL_GetVersion':         async (lib, arr) => writeIntArray(arr, [2, 28, 0]),
+  'SDL_GetCompiledVersion': (lib, arr) => writeIntArray(arr, [2, 28, 0]),
+  'SDL_GetVersion':         (lib, arr) => writeIntArray(arr, [2, 28, 0]),
 
   // ── Clipboard ───────────────────────────────────────────────────────────────
   'SDL_SetClipboardText': async (lib, text) => {
@@ -122,7 +122,7 @@ const methods = {
   },
 
   // ── Window ──────────────────────────────────────────────────────────────────
-  'SDL_CreateWindow': async (lib, title, w, h, flags) => {
+  'SDL_CreateWindow': (lib, title, w, h, flags) => {
     if (state.canvas) {
       state.canvas.width  = state.width  = w;
       state.canvas.height = state.height = h;
@@ -130,51 +130,51 @@ const methods = {
     if (typeof title === 'string') document.title = title;
     return state.windowHandle;
   },
-  'SDL_DestroyWindow':      async (lib, h) => {},
-  'SDL_SetWindowIcon':      async (lib, h, s) => {},
-  'SDL_RestoreWindow':      async (lib, h) => {},
-  'SDL_MaximizeWindow':     async (lib, h) => {},
-  'SDL_MinimizeWindow':     async (lib, h) => {},
-  'SDL_SetWindowFullscreen':async (lib, h, flags) => {
+  'SDL_DestroyWindow':      (lib, h) => {},
+  'SDL_SetWindowIcon':      (lib, h, s) => {},
+  'SDL_RestoreWindow':      (lib, h) => {},
+  'SDL_MaximizeWindow':     (lib, h) => {},
+  'SDL_MinimizeWindow':     (lib, h) => {},
+  'SDL_SetWindowFullscreen':(lib, h, flags) => {
     if (flags && state.canvas?.requestFullscreen) state.canvas.requestFullscreen().catch(()=>{});
     else if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     return 0;
   },
-  'SDL_SetWindowBordered':  async (lib, h, b) => {},
-  'SDL_SetWindowSize':      async (lib, h, w, ht) => {
+  'SDL_SetWindowBordered':  (lib, h, b) => {},
+  'SDL_SetWindowSize':      (lib, h, w, ht) => {
     if (state.canvas) { state.canvas.width = state.width = w; state.canvas.height = state.height = ht; }
   },
-  'SDL_SetWindowPosition':  async (lib, h, x, y) => {},
-  'SDL_GetWindowDisplayIndex': async (lib, h) => 0,
-  'SDL_GetDisplayUsableBounds': async (lib, d, arr) => writeIntArray(arr, [0, 0, screen.availWidth, screen.availHeight]),
-  'SDL_GetDisplayBounds':       async (lib, d, arr) => writeIntArray(arr, [0, 0, screen.width, screen.height]),
-  'SDL_GetCurrentDisplayMode':  async (lib, d, arr) => writeIntArray(arr, [screen.width, screen.height]),
-  'SDL_GetDesktopDisplayMode':  async (lib, d, arr) => writeIntArray(arr, [screen.width, screen.height]),
-  'SDL_SetWindowAlwaysOnTop':   async (lib, h, t) => {},
-  'SDL_GetNumVideoDisplays':    async (lib) => 1,
-  'SDL_GetWindowFlags':         async (lib, h) => 0,
-  'SDL_SetWindowTitle':         async (lib, h, t) => { if (typeof t === 'string') document.title = t; },
+  'SDL_SetWindowPosition':  (lib, h, x, y) => {},
+  'SDL_GetWindowDisplayIndex': (lib, h) => 0,
+  'SDL_GetDisplayUsableBounds': (lib, d, arr) => writeIntArray(arr, [0, 0, screen.availWidth, screen.availHeight]),
+  'SDL_GetDisplayBounds':       (lib, d, arr) => writeIntArray(arr, [0, 0, screen.width, screen.height]),
+  'SDL_GetCurrentDisplayMode':  (lib, d, arr) => writeIntArray(arr, [screen.width, screen.height]),
+  'SDL_GetDesktopDisplayMode':  (lib, d, arr) => writeIntArray(arr, [screen.width, screen.height]),
+  'SDL_SetWindowAlwaysOnTop':   (lib, h, t) => {},
+  'SDL_GetNumVideoDisplays':    (lib) => 1,
+  'SDL_GetWindowFlags':         (lib, h) => 0,
+  'SDL_SetWindowTitle':         (lib, h, t) => { if (typeof t === 'string') document.title = t; },
 
   // ── Surface / cursor (mostly no-ops; SDL_Cursor handles are dummy ids) ──────
-  'SDL_CreateRGBSurfaceFrom': async (lib, bytes, w, h) => 100,
-  'SDL_CreateColorCursor':    async (lib, surf, hx, hy) => 101,
-  'SDL_CreateSystemCursor':   async (lib, type) => 102,
-  'SDL_SetCursor':            async (lib, h) => {},
-  'SDL_FreeCursor':           async (lib, h) => {},
-  'SDL_FreeSurface':          async (lib, h) => {},
+  'SDL_CreateRGBSurfaceFrom': (lib, bytes, w, h) => 100,
+  'SDL_CreateColorCursor':    (lib, surf, hx, hy) => 101,
+  'SDL_CreateSystemCursor':   (lib, type) => 102,
+  'SDL_SetCursor':            (lib, h) => {},
+  'SDL_FreeCursor':           (lib, h) => {},
+  'SDL_FreeSurface':          (lib, h) => {},
 
   // ── Dialog ──────────────────────────────────────────────────────────────────
-  'SDL_ShowSimpleMessageBox': async (lib, flags, title, msg) => {
+  'SDL_ShowSimpleMessageBox': (lib, flags, title, msg) => {
     alert((title ? title + '\n\n' : '') + (msg || '')); return 0;
   },
 
   // ── Text input ──────────────────────────────────────────────────────────────
-  'SDL_StartTextInput':   async (lib) => { state.textInputActive = true; },
-  'SDL_StopTextInput':    async (lib) => { state.textInputActive = false; },
-  'SDL_SetTextInputRect': async (lib, x, y, w, h) => {},
+  'SDL_StartTextInput':   (lib) => { state.textInputActive = true; },
+  'SDL_StopTextInput':    (lib) => { state.textInputActive = false; },
+  'SDL_SetTextInputRect': (lib, x, y, w, h) => {},
 
   // ── Event polling ───────────────────────────────────────────────────────────
-  'SDL_PollEvent': async (lib, data) => {
+  'SDL_PollEvent': (lib, data) => {
     if (state.events.length === 0) return false;
     const ev = state.events.shift();
     // data[0] = event type; remaining slots depend on event type.
@@ -196,12 +196,12 @@ const methods = {
   },
 
   // ── GL context ──────────────────────────────────────────────────────────────
-  'SDL_GL_SetAttribute':      async (lib, attr, value) => { state.glAttrs[attr] = value; return 0; },
-  'SDL_GL_ExtensionSupported':async (lib, ext) => {
+  'SDL_GL_SetAttribute':      (lib, attr, value) => { state.glAttrs[attr] = value; return 0; },
+  'SDL_GL_ExtensionSupported':(lib, ext) => {
     if (!state.gl) return false;
     return state.gl.getSupportedExtensions().includes(ext);
   },
-  'SDL_GL_CreateContext': async (lib, win) => {
+  'SDL_GL_CreateContext': (lib, win) => {
     if (!state.canvas) throw new Error('SDL_GL_CreateContext: no canvas attached');
     // `failIfMajorPerformanceCaveat: false` lets the context be created on
     // software renderers (SwiftShader / llvmpipe) — important for Chromebooks,
@@ -219,8 +219,8 @@ const methods = {
     if (!state.gl) throw new Error('WebGL not supported in this browser');
     return state.glContextHandle;
   },
-  'SDL_GL_SetSwapInterval': async (lib, on) => 0,
-  'SDL_GL_SwapWindow': async (lib, win) => {
+  'SDL_GL_SetSwapInterval': (lib, on) => 0,
+  'SDL_GL_SwapWindow': (lib, win) => {
     state.frameCount = (state.frameCount || 0) + 1;
     const now = performance.now();
     if (!state.lastFrameLog || now - state.lastFrameLog > 1000) {
@@ -237,7 +237,7 @@ const methods = {
       state.lastClearCount = state.clearCount || 0;
     }
   },
-  'SDL_GL_GetDrawableSize': async (lib, win, arr) => writeIntArray(arr, [state.width, state.height]),
+  'SDL_GL_GetDrawableSize': (lib, win, arr) => writeIntArray(arr, [state.width, state.height]),
 };
 
 // ── Helper: write a list of ints into a Java int[] handle ─────────────────────

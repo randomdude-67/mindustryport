@@ -124,52 +124,52 @@ async function nioBufferToBytes(buf, hintedSize) {
 const m = {
   // Returns null on success; any non-null/non-empty return is treated by Arc
   // as the *error message* (printed as "GLEW failed to initialize: <return>").
-  init: async (lib) => null,
+  init: (lib) => null,
 
   // ── Per-frame state ────────────────────────────────────────────────────────
-  glClear: async (lib, mask) => {
+  glClear: (lib, mask) => {
     state.lastClearMask = mask;
     state.clearCount = (state.clearCount || 0) + 1;
     gl().clear(mask);
   },
-  glClearColor: async (lib, r, g, b, a) => {
+  glClearColor: (lib, r, g, b, a) => {
     state.lastClearColor = [r, g, b, a];
     gl().clearColor(r, g, b, a);
   },
-  glClearDepthf:  async (lib, d) => gl().clearDepth(d),
-  glClearStencil: async (lib, s) => gl().clearStencil(s),
-  glColorMask:    async (lib, r, g, b, a) => gl().colorMask(!!r, !!g, !!b, !!a),
-  glDepthFunc:    async (lib, f) => gl().depthFunc(f),
-  glDepthMask:    async (lib, f) => gl().depthMask(!!f),
-  glDepthRangef:  async (lib, n, f) => gl().depthRange(n, f),
-  glCullFace:     async (lib, m) => gl().cullFace(m),
-  glFrontFace:    async (lib, m) => gl().frontFace(m),
-  glEnable:       async (lib, c) => gl().enable(c),
-  glDisable:      async (lib, c) => gl().disable(c),
-  glBlendFunc:    async (lib, s, d) => gl().blendFunc(s, d),
-  glBlendColor:   async (lib, r, g, b, a) => gl().blendColor(r, g, b, a),
-  glBlendEquation: async (lib, m) => gl().blendEquation(m),
-  glBlendEquationSeparate: async (lib, mRGB, mA) => gl().blendEquationSeparate(mRGB, mA),
-  glBlendFuncSeparate: async (lib, sRGB, dRGB, sA, dA) => gl().blendFuncSeparate(sRGB, dRGB, sA, dA),
-  glLineWidth:    async (lib, w) => gl().lineWidth(w),
-  glPolygonOffset: async (lib, f, u) => gl().polygonOffset(f, u),
-  glScissor:      async (lib, x, y, w, h) => gl().scissor(x, y, w, h),
-  glStencilFunc:  async (lib, f, r, m) => gl().stencilFunc(f, r, m),
-  glStencilMask:  async (lib, m) => gl().stencilMask(m),
-  glStencilOp:    async (lib, f, zf, zp) => gl().stencilOp(f, zf, zp),
-  glStencilFuncSeparate: async (lib, face, f, r, m) => gl().stencilFuncSeparate(face, f, r, m),
-  glStencilMaskSeparate: async (lib, face, m) => gl().stencilMaskSeparate(face, m),
-  glStencilOpSeparate: async (lib, face, f, zf, zp) => gl().stencilOpSeparate(face, f, zf, zp),
-  glViewport:     async (lib, x, y, w, h) => gl().viewport(x, y, w, h),
-  glHint:         async (lib, t, m) => gl().hint(t, m),
-  glPixelStorei:  async (lib, p, v) => gl().pixelStorei(p, v),
-  glSampleCoverage: async (lib, v, inv) => gl().sampleCoverage(v, !!inv),
-  glFinish:       async (lib) => gl().finish(),
-  glFlush:        async (lib) => gl().flush(),
+  glClearDepthf:  (lib, d) => gl().clearDepth(d),
+  glClearStencil: (lib, s) => gl().clearStencil(s),
+  glColorMask:    (lib, r, g, b, a) => gl().colorMask(!!r, !!g, !!b, !!a),
+  glDepthFunc:    (lib, f) => gl().depthFunc(f),
+  glDepthMask:    (lib, f) => gl().depthMask(!!f),
+  glDepthRangef:  (lib, n, f) => gl().depthRange(n, f),
+  glCullFace:     (lib, m) => gl().cullFace(m),
+  glFrontFace:    (lib, m) => gl().frontFace(m),
+  glEnable:       (lib, c) => gl().enable(c),
+  glDisable:      (lib, c) => gl().disable(c),
+  glBlendFunc:    (lib, s, d) => gl().blendFunc(s, d),
+  glBlendColor:   (lib, r, g, b, a) => gl().blendColor(r, g, b, a),
+  glBlendEquation: (lib, m) => gl().blendEquation(m),
+  glBlendEquationSeparate: (lib, mRGB, mA) => gl().blendEquationSeparate(mRGB, mA),
+  glBlendFuncSeparate: (lib, sRGB, dRGB, sA, dA) => gl().blendFuncSeparate(sRGB, dRGB, sA, dA),
+  glLineWidth:    (lib, w) => gl().lineWidth(w),
+  glPolygonOffset: (lib, f, u) => gl().polygonOffset(f, u),
+  glScissor:      (lib, x, y, w, h) => gl().scissor(x, y, w, h),
+  glStencilFunc:  (lib, f, r, m) => gl().stencilFunc(f, r, m),
+  glStencilMask:  (lib, m) => gl().stencilMask(m),
+  glStencilOp:    (lib, f, zf, zp) => gl().stencilOp(f, zf, zp),
+  glStencilFuncSeparate: (lib, face, f, r, m) => gl().stencilFuncSeparate(face, f, r, m),
+  glStencilMaskSeparate: (lib, face, m) => gl().stencilMaskSeparate(face, m),
+  glStencilOpSeparate: (lib, face, f, zf, zp) => gl().stencilOpSeparate(face, f, zf, zp),
+  glViewport:     (lib, x, y, w, h) => gl().viewport(x, y, w, h),
+  glHint:         (lib, t, m) => gl().hint(t, m),
+  glPixelStorei:  (lib, p, v) => gl().pixelStorei(p, v),
+  glSampleCoverage: (lib, v, inv) => gl().sampleCoverage(v, !!inv),
+  glFinish:       (lib) => gl().finish(),
+  glFlush:        (lib) => gl().flush(),
 
   // ── Errors / strings ───────────────────────────────────────────────────────
-  glGetError:    async (lib) => gl().getError(),
-  glGetString:   async (lib, n) => {
+  glGetError:    (lib) => gl().getError(),
+  glGetString:   (lib, n) => {
     // Mindustry parses GL_VERSION (0x1F02) looking for "OpenGL X.Y..." and
     // requires major >= 2 + FBO support. Chrome's WebGL returns strings like
     // "WebGL 2.0 (OpenGL ES 3.0 Chromium)" which fails that parse. Rewrite
@@ -183,7 +183,7 @@ const m = {
     if (n === 0x1F01 /* GL_RENDERER */) return raw || 'WebGL';
     return raw || '';
   },
-  glGetStringi:  async (lib, n, i) => '',
+  glGetStringi:  (lib, n, i) => '',
   glGetIntegerv: async (lib, p, out) => {
     const v = gl().getParameter(p);
     if (typeof v === 'number') await bufPutInt(out, 0, v);
@@ -210,36 +210,36 @@ const m = {
   },
 
   // ── Textures ───────────────────────────────────────────────────────────────
-  glGenTexture: async (lib) => reg.texture.add(gl().createTexture()),
-  glDeleteTexture: async (lib, id) => { gl().deleteTexture(reg.texture.get(id)); reg.texture.remove(id); },
-  glBindTexture: async (lib, t, id) => gl().bindTexture(t, id ? reg.texture.get(id) : null),
-  glActiveTexture: async (lib, t) => gl().activeTexture(t),
-  glIsTexture: async (lib, id) => gl().isTexture(reg.texture.get(id) || null),
-  glGenerateMipmap: async (lib, t) => gl().generateMipmap(t),
-  glTexParameterf: async (lib, t, p, v) => gl().texParameterf(t, p, v),
-  glTexParameteri: async (lib, t, p, v) => gl().texParameteri(t, p, v),
-  glTexParameterfv: async (lib, t, p, b) => { const a = F32(b); if (a) gl().texParameterf(t, p, a[0]); },
-  glTexParameteriv: async (lib, t, p, b) => { const a = I32(b); if (a) gl().texParameteri(t, p, a[0]); },
-  glGetTexParameterfv: async () => {},
-  glGetTexParameteriv: async () => {},
-  glTexImage2D: async (lib, target, level, internal, w, h, border, format, type, pixels) => {
+  glGenTexture: (lib) => reg.texture.add(gl().createTexture()),
+  glDeleteTexture: (lib, id) => { gl().deleteTexture(reg.texture.get(id)); reg.texture.remove(id); },
+  glBindTexture: (lib, t, id) => gl().bindTexture(t, id ? reg.texture.get(id) : null),
+  glActiveTexture: (lib, t) => gl().activeTexture(t),
+  glIsTexture: (lib, id) => gl().isTexture(reg.texture.get(id) || null),
+  glGenerateMipmap: (lib, t) => gl().generateMipmap(t),
+  glTexParameterf: (lib, t, p, v) => gl().texParameterf(t, p, v),
+  glTexParameteri: (lib, t, p, v) => gl().texParameteri(t, p, v),
+  glTexParameterfv: (lib, t, p, b) => { const a = F32(b); if (a) gl().texParameterf(t, p, a[0]); },
+  glTexParameteriv: (lib, t, p, b) => { const a = I32(b); if (a) gl().texParameteri(t, p, a[0]); },
+  glGetTexParameterfv: () => {},
+  glGetTexParameteriv: () => {},
+  glTexImage2D: (lib, target, level, internal, w, h, border, format, type, pixels) => {
     const data = pixels ? asTypedArray(pixels) : null;
     gl().texImage2D(target, level, internal, w, h, border, format, type, data);
   },
-  glTexSubImage2D: async (lib, target, level, x, y, w, h, format, type, pixels) => {
+  glTexSubImage2D: (lib, target, level, x, y, w, h, format, type, pixels) => {
     const data = pixels ? asTypedArray(pixels) : null;
     gl().texSubImage2D(target, level, x, y, w, h, format, type, data);
   },
-  glCompressedTexImage2D: async () => {},
-  glCompressedTexSubImage2D: async () => {},
-  glCopyTexImage2D: async (lib, t, l, i, x, y, w, h, b) => gl().copyTexImage2D(t, l, i, x, y, w, h, b),
-  glCopyTexSubImage2D: async (lib, t, l, xo, yo, x, y, w, h) => gl().copyTexSubImage2D(t, l, xo, yo, x, y, w, h),
+  glCompressedTexImage2D: () => {},
+  glCompressedTexSubImage2D: () => {},
+  glCopyTexImage2D: (lib, t, l, i, x, y, w, h, b) => gl().copyTexImage2D(t, l, i, x, y, w, h, b),
+  glCopyTexSubImage2D: (lib, t, l, xo, yo, x, y, w, h) => gl().copyTexSubImage2D(t, l, xo, yo, x, y, w, h),
 
   // ── Buffers ────────────────────────────────────────────────────────────────
-  glGenBuffer: async (lib) => reg.buffer.add(gl().createBuffer()),
-  glDeleteBuffer: async (lib, id) => { gl().deleteBuffer(reg.buffer.get(id)); reg.buffer.remove(id); },
-  glBindBuffer: async (lib, t, id) => gl().bindBuffer(t, id ? reg.buffer.get(id) : null),
-  glIsBuffer: async (lib, id) => gl().isBuffer(reg.buffer.get(id) || null),
+  glGenBuffer: (lib) => reg.buffer.add(gl().createBuffer()),
+  glDeleteBuffer: (lib, id) => { gl().deleteBuffer(reg.buffer.get(id)); reg.buffer.remove(id); },
+  glBindBuffer: (lib, t, id) => gl().bindBuffer(t, id ? reg.buffer.get(id) : null),
+  glIsBuffer: (lib, id) => gl().isBuffer(reg.buffer.get(id) || null),
   glBufferData: async (lib, target, size, data, usage) => {
     if (!data) { gl().bufferData(target, size | 0, usage); return; }
     const bytes = await nioBufferToBytes(data, size);
@@ -250,40 +250,40 @@ const m = {
     const bytes = await nioBufferToBytes(data, size);
     if (bytes) gl().bufferSubData(target, offset, bytes);
   },
-  glGetBufferParameteriv: async () => {},
+  glGetBufferParameteriv: () => {},
 
   // ── Framebuffers / renderbuffers ───────────────────────────────────────────
-  glGenFramebuffer: async (lib) => reg.framebuffer.add(gl().createFramebuffer()),
-  glDeleteFramebuffer: async (lib, id) => { gl().deleteFramebuffer(reg.framebuffer.get(id)); reg.framebuffer.remove(id); },
-  glBindFramebuffer: async (lib, t, id) => gl().bindFramebuffer(t, id ? reg.framebuffer.get(id) : null),
-  glIsFramebuffer: async (lib, id) => gl().isFramebuffer(reg.framebuffer.get(id) || null),
-  glCheckFramebufferStatus: async (lib, t) => gl().checkFramebufferStatus(t),
-  glFramebufferTexture2D: async (lib, t, a, tt, tex, lvl) => gl().framebufferTexture2D(t, a, tt, reg.texture.get(tex), lvl),
-  glFramebufferRenderbuffer: async (lib, t, a, rt, r) => gl().framebufferRenderbuffer(t, a, rt, reg.renderbuffer.get(r)),
-  glGetFramebufferAttachmentParameteriv: async () => {},
+  glGenFramebuffer: (lib) => reg.framebuffer.add(gl().createFramebuffer()),
+  glDeleteFramebuffer: (lib, id) => { gl().deleteFramebuffer(reg.framebuffer.get(id)); reg.framebuffer.remove(id); },
+  glBindFramebuffer: (lib, t, id) => gl().bindFramebuffer(t, id ? reg.framebuffer.get(id) : null),
+  glIsFramebuffer: (lib, id) => gl().isFramebuffer(reg.framebuffer.get(id) || null),
+  glCheckFramebufferStatus: (lib, t) => gl().checkFramebufferStatus(t),
+  glFramebufferTexture2D: (lib, t, a, tt, tex, lvl) => gl().framebufferTexture2D(t, a, tt, reg.texture.get(tex), lvl),
+  glFramebufferRenderbuffer: (lib, t, a, rt, r) => gl().framebufferRenderbuffer(t, a, rt, reg.renderbuffer.get(r)),
+  glGetFramebufferAttachmentParameteriv: () => {},
 
-  glGenRenderbuffer: async (lib) => reg.renderbuffer.add(gl().createRenderbuffer()),
-  glDeleteRenderbuffer: async (lib, id) => { gl().deleteRenderbuffer(reg.renderbuffer.get(id)); reg.renderbuffer.remove(id); },
-  glBindRenderbuffer: async (lib, t, id) => gl().bindRenderbuffer(t, id ? reg.renderbuffer.get(id) : null),
-  glIsRenderbuffer: async (lib, id) => gl().isRenderbuffer(reg.renderbuffer.get(id) || null),
-  glRenderbufferStorage: async (lib, t, f, w, h) => gl().renderbufferStorage(t, f, w, h),
-  glRenderbufferStorageMultisample: async (lib, t, s, f, w, h) => gl().renderbufferStorageMultisample(t, s, f, w, h),
-  glGetRenderbufferParameteriv: async () => {},
-  glBlitFramebuffer: async (lib, sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, filter) =>
+  glGenRenderbuffer: (lib) => reg.renderbuffer.add(gl().createRenderbuffer()),
+  glDeleteRenderbuffer: (lib, id) => { gl().deleteRenderbuffer(reg.renderbuffer.get(id)); reg.renderbuffer.remove(id); },
+  glBindRenderbuffer: (lib, t, id) => gl().bindRenderbuffer(t, id ? reg.renderbuffer.get(id) : null),
+  glIsRenderbuffer: (lib, id) => gl().isRenderbuffer(reg.renderbuffer.get(id) || null),
+  glRenderbufferStorage: (lib, t, f, w, h) => gl().renderbufferStorage(t, f, w, h),
+  glRenderbufferStorageMultisample: (lib, t, s, f, w, h) => gl().renderbufferStorageMultisample(t, s, f, w, h),
+  glGetRenderbufferParameteriv: () => {},
+  glBlitFramebuffer: (lib, sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, filter) =>
     gl().blitFramebuffer(sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, filter),
 
   // ── Programs and shaders ───────────────────────────────────────────────────
-  glCreateProgram: async (lib) => reg.program.add(gl().createProgram()),
-  glDeleteProgram: async (lib, id) => { gl().deleteProgram(reg.program.get(id)); reg.program.remove(id); },
-  glIsProgram: async (lib, id) => gl().isProgram(reg.program.get(id) || null),
-  glLinkProgram: async (lib, id) => gl().linkProgram(reg.program.get(id)),
-  glUseProgram: async (lib, id) => gl().useProgram(id ? reg.program.get(id) : null),
-  glValidateProgram: async (lib, id) => gl().validateProgram(reg.program.get(id)),
-  glAttachShader: async (lib, p, s) => gl().attachShader(reg.program.get(p), reg.shader.get(s)),
-  glDetachShader: async (lib, p, s) => gl().detachShader(reg.program.get(p), reg.shader.get(s)),
-  glBindAttribLocation: async (lib, p, i, name) => gl().bindAttribLocation(reg.program.get(p), i, String(name)),
-  glGetAttribLocation: async (lib, p, name) => gl().getAttribLocation(reg.program.get(p), String(name)),
-  glGetUniformLocation: async (lib, p, name) => {
+  glCreateProgram: (lib) => reg.program.add(gl().createProgram()),
+  glDeleteProgram: (lib, id) => { gl().deleteProgram(reg.program.get(id)); reg.program.remove(id); },
+  glIsProgram: (lib, id) => gl().isProgram(reg.program.get(id) || null),
+  glLinkProgram: (lib, id) => gl().linkProgram(reg.program.get(id)),
+  glUseProgram: (lib, id) => gl().useProgram(id ? reg.program.get(id) : null),
+  glValidateProgram: (lib, id) => gl().validateProgram(reg.program.get(id)),
+  glAttachShader: (lib, p, s) => gl().attachShader(reg.program.get(p), reg.shader.get(s)),
+  glDetachShader: (lib, p, s) => gl().detachShader(reg.program.get(p), reg.shader.get(s)),
+  glBindAttribLocation: (lib, p, i, name) => gl().bindAttribLocation(reg.program.get(p), i, String(name)),
+  glGetAttribLocation: (lib, p, name) => gl().getAttribLocation(reg.program.get(p), String(name)),
+  glGetUniformLocation: (lib, p, name) => {
     const loc = gl().getUniformLocation(reg.program.get(p), String(name));
     return reg.uniformLoc.add(loc);
   },
@@ -291,18 +291,18 @@ const m = {
     const v = gl().getProgramParameter(reg.program.get(p), pname);
     await bufPutInt(out, 0, typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0));
   },
-  glGetProgramInfoLog: async (lib, p) => gl().getProgramInfoLog(reg.program.get(p)) || '',
-  glGetActiveAttrib: async (lib, p, i) => {
+  glGetProgramInfoLog: (lib, p) => gl().getProgramInfoLog(reg.program.get(p)) || '',
+  glGetActiveAttrib: (lib, p, i) => {
     const info = gl().getActiveAttrib(reg.program.get(p), i); return info ? info.name : '';
   },
-  glGetActiveUniform: async (lib, p, i) => {
+  glGetActiveUniform: (lib, p, i) => {
     const info = gl().getActiveUniform(reg.program.get(p), i); return info ? info.name : '';
   },
 
-  glCreateShader: async (lib, type) => reg.shader.add(gl().createShader(type)),
-  glDeleteShader: async (lib, id) => { gl().deleteShader(reg.shader.get(id)); reg.shader.remove(id); },
-  glIsShader: async (lib, id) => gl().isShader(reg.shader.get(id) || null),
-  glShaderSource: async (lib, id, src) => {
+  glCreateShader: (lib, type) => reg.shader.add(gl().createShader(type)),
+  glDeleteShader: (lib, id) => { gl().deleteShader(reg.shader.get(id)); reg.shader.remove(id); },
+  glIsShader: (lib, id) => gl().isShader(reg.shader.get(id) || null),
+  glShaderSource: (lib, id, src) => {
     // Arc shaders target desktop GLSL (`#version 130/140/330`) but use
     // `in`/`out` qualifiers that require GLSL ES 3.00 under WebGL 2. The
     // GLSL ES compiler is also stricter about default precisions and a few
@@ -325,7 +325,7 @@ const m = {
     s = s.replace(/\btextureCube\b/g, 'texture');
     return gl().shaderSource(reg.shader.get(id), s);
   },
-  glCompileShader: async (lib, id) => {
+  glCompileShader: (lib, id) => {
     const sh = reg.shader.get(id);
     gl().compileShader(sh);
     // Diagnostic: log compile result + first 200 chars of the source on
@@ -341,62 +341,62 @@ const m = {
     const v = gl().getShaderParameter(reg.shader.get(s), pname);
     await bufPutInt(out, 0, typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0));
   },
-  glGetShaderInfoLog: async (lib, s) => gl().getShaderInfoLog(reg.shader.get(s)) || '',
-  glGetShaderPrecisionFormat: async () => {},
-  glReleaseShaderCompiler: async () => {},
+  glGetShaderInfoLog: (lib, s) => gl().getShaderInfoLog(reg.shader.get(s)) || '',
+  glGetShaderPrecisionFormat: () => {},
+  glReleaseShaderCompiler: () => {},
 
   // ── Vertex attributes ──────────────────────────────────────────────────────
-  glEnableVertexAttribArray:  async (lib, i) => gl().enableVertexAttribArray(i),
-  glDisableVertexAttribArray: async (lib, i) => gl().disableVertexAttribArray(i),
-  glVertexAttribPointer:      async (lib, i, sz, t, n, str, ptr) => gl().vertexAttribPointer(i, sz, t, !!n, str, typeof ptr === 'number' ? ptr : 0),
-  glVertexAttrib1f: async (lib, i, x) => gl().vertexAttrib1f(i, x),
-  glVertexAttrib2f: async (lib, i, x, y) => gl().vertexAttrib2f(i, x, y),
-  glVertexAttrib3f: async (lib, i, x, y, z) => gl().vertexAttrib3f(i, x, y, z),
-  glVertexAttrib4f: async (lib, i, x, y, z, w) => gl().vertexAttrib4f(i, x, y, z, w),
-  glVertexAttrib1fv: async (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib1fv(i, a); },
-  glVertexAttrib2fv: async (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib2fv(i, a); },
-  glVertexAttrib3fv: async (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib3fv(i, a); },
-  glVertexAttrib4fv: async (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib4fv(i, a); },
-  glGetVertexAttribfv: async () => {},
-  glGetVertexAttribiv: async () => {},
-  glVertexAttribDivisor: async (lib, i, d) => gl().vertexAttribDivisor?.(i, d),
+  glEnableVertexAttribArray:  (lib, i) => gl().enableVertexAttribArray(i),
+  glDisableVertexAttribArray: (lib, i) => gl().disableVertexAttribArray(i),
+  glVertexAttribPointer:      (lib, i, sz, t, n, str, ptr) => gl().vertexAttribPointer(i, sz, t, !!n, str, typeof ptr === 'number' ? ptr : 0),
+  glVertexAttrib1f: (lib, i, x) => gl().vertexAttrib1f(i, x),
+  glVertexAttrib2f: (lib, i, x, y) => gl().vertexAttrib2f(i, x, y),
+  glVertexAttrib3f: (lib, i, x, y, z) => gl().vertexAttrib3f(i, x, y, z),
+  glVertexAttrib4f: (lib, i, x, y, z, w) => gl().vertexAttrib4f(i, x, y, z, w),
+  glVertexAttrib1fv: (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib1fv(i, a); },
+  glVertexAttrib2fv: (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib2fv(i, a); },
+  glVertexAttrib3fv: (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib3fv(i, a); },
+  glVertexAttrib4fv: (lib, i, b) => { const a = F32(b); if (a) gl().vertexAttrib4fv(i, a); },
+  glGetVertexAttribfv: () => {},
+  glGetVertexAttribiv: () => {},
+  glVertexAttribDivisor: (lib, i, d) => gl().vertexAttribDivisor?.(i, d),
 
   // ── Uniforms ───────────────────────────────────────────────────────────────
-  glUniform1f: async (lib, l, x) => gl().uniform1f(reg.uniformLoc.get(l), x),
-  glUniform2f: async (lib, l, x, y) => gl().uniform2f(reg.uniformLoc.get(l), x, y),
-  glUniform3f: async (lib, l, x, y, z) => gl().uniform3f(reg.uniformLoc.get(l), x, y, z),
-  glUniform4f: async (lib, l, x, y, z, w) => gl().uniform4f(reg.uniformLoc.get(l), x, y, z, w),
-  glUniform1i: async (lib, l, x) => gl().uniform1i(reg.uniformLoc.get(l), x),
-  glUniform2i: async (lib, l, x, y) => gl().uniform2i(reg.uniformLoc.get(l), x, y),
-  glUniform3i: async (lib, l, x, y, z) => gl().uniform3i(reg.uniformLoc.get(l), x, y, z),
-  glUniform4i: async (lib, l, x, y, z, w) => gl().uniform4i(reg.uniformLoc.get(l), x, y, z, w),
-  glUniform1fv: async (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform1fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count)); },
-  glUniform2fv: async (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform2fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 2)); },
-  glUniform3fv: async (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform3fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 3)); },
-  glUniform4fv: async (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform4fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 4)); },
-  glUniform1iv: async (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform1iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count)); },
-  glUniform2iv: async (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform2iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 2)); },
-  glUniform3iv: async (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform3iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 3)); },
-  glUniform4iv: async (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform4iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 4)); },
-  glUniformMatrix2fv: async (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix2fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 4)); },
-  glUniformMatrix3fv: async (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix3fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 9)); },
-  glUniformMatrix4fv: async (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix4fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 16)); },
-  glGetUniformfv: async () => {},
-  glGetUniformiv: async () => {},
+  glUniform1f: (lib, l, x) => gl().uniform1f(reg.uniformLoc.get(l), x),
+  glUniform2f: (lib, l, x, y) => gl().uniform2f(reg.uniformLoc.get(l), x, y),
+  glUniform3f: (lib, l, x, y, z) => gl().uniform3f(reg.uniformLoc.get(l), x, y, z),
+  glUniform4f: (lib, l, x, y, z, w) => gl().uniform4f(reg.uniformLoc.get(l), x, y, z, w),
+  glUniform1i: (lib, l, x) => gl().uniform1i(reg.uniformLoc.get(l), x),
+  glUniform2i: (lib, l, x, y) => gl().uniform2i(reg.uniformLoc.get(l), x, y),
+  glUniform3i: (lib, l, x, y, z) => gl().uniform3i(reg.uniformLoc.get(l), x, y, z),
+  glUniform4i: (lib, l, x, y, z, w) => gl().uniform4i(reg.uniformLoc.get(l), x, y, z, w),
+  glUniform1fv: (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform1fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count)); },
+  glUniform2fv: (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform2fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 2)); },
+  glUniform3fv: (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform3fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 3)); },
+  glUniform4fv: (lib, l, count, v, offset) => { const a = F32(v); if (a) gl().uniform4fv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 4)); },
+  glUniform1iv: (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform1iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count)); },
+  glUniform2iv: (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform2iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 2)); },
+  glUniform3iv: (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform3iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 3)); },
+  glUniform4iv: (lib, l, count, v, offset) => { const a = I32(v); if (a) gl().uniform4iv(reg.uniformLoc.get(l), a.subarray(offset || 0, (offset || 0) + count * 4)); },
+  glUniformMatrix2fv: (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix2fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 4)); },
+  glUniformMatrix3fv: (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix3fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 9)); },
+  glUniformMatrix4fv: (lib, l, count, t, v, offset) => { const a = F32(v); if (a) gl().uniformMatrix4fv(reg.uniformLoc.get(l), !!t, a.subarray(offset || 0, (offset || 0) + count * 16)); },
+  glGetUniformfv: () => {},
+  glGetUniformiv: () => {},
 
   // ── Drawing ────────────────────────────────────────────────────────────────
-  glDrawArrays: async (lib, m, f, c) => {
+  glDrawArrays: (lib, m, f, c) => {
     state.drawCalls = (state.drawCalls || 0) + 1;
     gl().drawArrays(m, f, c);
   },
-  glDrawElements: async (lib, mode, count, type, indices) => {
+  glDrawElements: (lib, mode, count, type, indices) => {
     state.drawCalls = (state.drawCalls || 0) + 1;
     if (typeof indices === 'number') gl().drawElements(mode, count, type, indices);
     else gl().drawElements(mode, count, type, 0);
   },
-  glDrawArraysInstanced: async (lib, m, f, c, ic) => gl().drawArraysInstanced?.(m, f, c, ic),
-  glDrawElementsInstanced: async (lib, m, c, t, off, ic) => gl().drawElementsInstanced?.(m, c, t, off, ic),
-  glReadPixels: async (lib, x, y, w, h, fmt, type, out) => gl().readPixels(x, y, w, h, fmt, type, asTypedArray(out)),
+  glDrawArraysInstanced: (lib, m, f, c, ic) => gl().drawArraysInstanced?.(m, f, c, ic),
+  glDrawElementsInstanced: (lib, m, c, t, off, ic) => gl().drawElementsInstanced?.(m, c, t, off, ic),
+  glReadPixels: (lib, x, y, w, h, fmt, type, out) => gl().readPixels(x, y, w, h, fmt, type, asTypedArray(out)),
 
   // ── Vertex array objects (WebGL2) ──────────────────────────────────────────
   glGenVertexArrays: async (lib, n, out) => {
@@ -405,7 +405,7 @@ const m = {
       await bufPutInt(out, i, id);
     }
   },
-  glDeleteVertexArrays: async (lib, n, ids) => {
+  glDeleteVertexArrays: (lib, n, ids) => {
     const arr = I32(ids);
     for (let i = 0; i < n; i++) {
       const id = arr ? arr[i] : 0;
@@ -413,11 +413,11 @@ const m = {
       reg.vao.remove(id);
     }
   },
-  glBindVertexArray: async (lib, id) => gl().bindVertexArray?.(id ? reg.vao.get(id) : null),
-  glIsVertexArray: async (lib, id) => !!gl().isVertexArray?.(reg.vao.get(id) || null),
+  glBindVertexArray: (lib, id) => gl().bindVertexArray?.(id ? reg.vao.get(id) : null),
+  glIsVertexArray: (lib, id) => !!gl().isVertexArray?.(reg.vao.get(id) || null),
 
   // ── Everything else: safe no-ops / sensible defaults ──────────────────────
-  glIsEnabled: async (lib, c) => !!gl().isEnabled(c),
+  glIsEnabled: (lib, c) => !!gl().isEnabled(c),
 };
 
 // Auto-stub anything we missed so calls don't crash with UnsatisfiedLinkError.
@@ -468,7 +468,7 @@ const allMethodNames = [
 
 for (const name of allMethodNames) {
   if (!(name in m)) {
-    m[name] = async () => { /* TODO: implement */ };
+    m[name] = () => { /* TODO: implement */ };
   }
 }
 
