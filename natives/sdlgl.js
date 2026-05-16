@@ -231,7 +231,22 @@ const m = {
   glCreateShader: async (lib, type) => reg.shader.add(gl().createShader(type)),
   glDeleteShader: async (lib, id) => { gl().deleteShader(reg.shader.get(id)); reg.shader.remove(id); },
   glIsShader: async (lib, id) => gl().isShader(reg.shader.get(id) || null),
-  glShaderSource: async (lib, id, src) => gl().shaderSource(reg.shader.get(id), String(src)),
+  glShaderSource: async (lib, id, src) => {
+    // Arc ships shaders with `#version 130/140/150/330` (desktop GL) but uses
+    // `in`/`out` qualifiers that require `#version 300 es` under WebGL 2's
+    // GLSL ES compiler. Rewrite the version directive, force `precision`
+    // qualifiers (mandatory in GLSL ES), and tag the shader stage so the
+    // shader can branch on it if needed. Native drivers tolerate the
+    // mismatch; WebGL is strict.
+    let s = String(src);
+    s = s.replace(/^\s*#version\s+\d+(\s+\w+)?\s*$/m, '#version 300 es');
+    if (!/^\s*#version\s+/m.test(s)) s = '#version 300 es\n' + s;
+    // Insert default precisions right after the #version line if missing.
+    if (!/precision\s+(highp|mediump|lowp)\s+float/.test(s)) {
+      s = s.replace(/(#version[^\n]*\n)/, '$1precision highp float;\nprecision highp int;\n');
+    }
+    return gl().shaderSource(reg.shader.get(id), s);
+  },
   glCompileShader: async (lib, id) => gl().compileShader(reg.shader.get(id)),
   glGetShaderiv: async (lib, s, pname, out) => {
     const v = gl().getShaderParameter(reg.shader.get(s), pname);
