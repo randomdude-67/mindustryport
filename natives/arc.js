@@ -46,6 +46,18 @@ const bufferNatives = {
   async Java_arc_util_Buffers_freeMemory(lib, buf) {
     // No-op: GC will collect when the Java reference is dropped.
   },
+  // ── JDK natives missing from CheerpJ's java.base ──────────────────────────
+  // CheerpJ's Java 8 runtime ships with several `java.nio.Bits` natives
+  // unimplemented. Mindustry hits `copySwapMemory0` via FreeType's pixmap
+  // upload path (`DirectIntBufferS.put` → JDK Bits → unsatisfied link).
+  // No-op is acceptable: the affected glyph pixmaps end up zero-filled, which
+  // matches our deliberately-stubbed FreeType bitmaps anyway.
+  async Java_java_nio_Bits_copySwapMemory0(lib, srcBase, srcOff, dstBase, dstOff, bytes, elemSize) {
+    // TODO: implement a real swapping memcpy if any real (non-stub) data
+    // path starts depending on this. For now, glyph + similar paths are all
+    // synthetic data.
+  },
+
   async Java_arc_util_Buffers_getBufferAddress(lib, buf) {
     // Non-zero placeholder. Arc's `getUnsafeBufferAddress` adds `position()`
     // and uses the result as a JNI handle; nothing in the WebGL path actually
