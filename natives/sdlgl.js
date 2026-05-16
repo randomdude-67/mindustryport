@@ -104,7 +104,20 @@ const m = {
 
   // ── Errors / strings ───────────────────────────────────────────────────────
   glGetError:    async (lib) => gl().getError(),
-  glGetString:   async (lib, n) => gl().getParameter(n) || '',
+  glGetString:   async (lib, n) => {
+    // Mindustry parses GL_VERSION (0x1F02) looking for "OpenGL X.Y..." and
+    // requires major >= 2 + FBO support. Chrome's WebGL returns strings like
+    // "WebGL 2.0 (OpenGL ES 3.0 Chromium)" which fails that parse. Rewrite
+    // the version string so Mindustry's check passes; FBO is always present
+    // in WebGL 1+, so this is honest.
+    const raw = gl().getParameter(n);
+    if (n === 0x1F02 /* GL_VERSION */) {
+      return 'OpenGL 3.0 (' + (raw || 'WebGL') + ')';
+    }
+    if (n === 0x1F00 /* GL_VENDOR */) return raw || 'Mozilla / CheerpJ';
+    if (n === 0x1F01 /* GL_RENDERER */) return raw || 'WebGL';
+    return raw || '';
+  },
   glGetStringi:  async (lib, n, i) => '',
   glGetIntegerv: async (lib, p, out) => {
     const v = gl().getParameter(p);
