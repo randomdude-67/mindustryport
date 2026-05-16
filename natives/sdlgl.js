@@ -127,15 +127,8 @@ const m = {
   init: (lib) => null,
 
   // ── Per-frame state ────────────────────────────────────────────────────────
-  glClear: (lib, mask) => {
-    state.lastClearMask = mask;
-    state.clearCount = (state.clearCount || 0) + 1;
-    gl().clear(mask);
-  },
-  glClearColor: (lib, r, g, b, a) => {
-    state.lastClearColor = [r, g, b, a];
-    gl().clearColor(r, g, b, a);
-  },
+  glClear: (lib, mask) => gl().clear(mask),
+  glClearColor: (lib, r, g, b, a) => gl().clearColor(r, g, b, a),
   glClearDepthf:  (lib, d) => gl().clearDepth(d),
   glClearStencil: (lib, s) => gl().clearStencil(s),
   glColorMask:    (lib, r, g, b, a) => gl().colorMask(!!r, !!g, !!b, !!a),
@@ -222,12 +215,12 @@ const m = {
   glTexParameteriv: (lib, t, p, b) => { const a = I32(b); if (a) gl().texParameteri(t, p, a[0]); },
   glGetTexParameterfv: () => {},
   glGetTexParameteriv: () => {},
-  glTexImage2D: (lib, target, level, internal, w, h, border, format, type, pixels) => {
-    const data = pixels ? asTypedArray(pixels) : null;
+  glTexImage2D: async (lib, target, level, internal, w, h, border, format, type, pixels) => {
+    const data = pixels ? (await nioBufferToBytes(pixels) || asTypedArray(pixels)) : null;
     gl().texImage2D(target, level, internal, w, h, border, format, type, data);
   },
-  glTexSubImage2D: (lib, target, level, x, y, w, h, format, type, pixels) => {
-    const data = pixels ? asTypedArray(pixels) : null;
+  glTexSubImage2D: async (lib, target, level, x, y, w, h, format, type, pixels) => {
+    const data = pixels ? (await nioBufferToBytes(pixels) || asTypedArray(pixels)) : null;
     gl().texSubImage2D(target, level, x, y, w, h, format, type, data);
   },
   glCompressedTexImage2D: () => {},
@@ -385,15 +378,9 @@ const m = {
   glGetUniformiv: () => {},
 
   // ── Drawing ────────────────────────────────────────────────────────────────
-  glDrawArrays: (lib, m, f, c) => {
-    state.drawCalls = (state.drawCalls || 0) + 1;
-    gl().drawArrays(m, f, c);
-  },
-  glDrawElements: (lib, mode, count, type, indices) => {
-    state.drawCalls = (state.drawCalls || 0) + 1;
-    if (typeof indices === 'number') gl().drawElements(mode, count, type, indices);
-    else gl().drawElements(mode, count, type, 0);
-  },
+  glDrawArrays: (lib, m, f, c) => gl().drawArrays(m, f, c),
+  glDrawElements: (lib, mode, count, type, indices) =>
+    gl().drawElements(mode, count, type, typeof indices === 'number' ? indices : 0),
   glDrawArraysInstanced: (lib, m, f, c, ic) => gl().drawArraysInstanced?.(m, f, c, ic),
   glDrawElementsInstanced: (lib, m, c, t, off, ic) => gl().drawElementsInstanced?.(m, c, t, off, ic),
   glReadPixels: (lib, x, y, w, h, fmt, type, out) => gl().readPixels(x, y, w, h, fmt, type, asTypedArray(out)),

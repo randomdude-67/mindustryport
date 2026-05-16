@@ -100,25 +100,61 @@ const bufferNatives = {
     return buf;
   },
 
-  // Image decode path (PNG/JPG bytes -> raw RGBA). We can't decode
-  // synchronously in JS — createImageBitmap is the only browser-native option
-  // and it's async, plus it doesn't give back pixel bytes without a canvas
-  // round-trip. For now, return an empty RGBA buffer so Mindustry's
-  // Pixmap.<init>(byte[]) doesn't AIOOBE; textures will be blank but the
-  // loading path will continue. Real decode is a follow-up.
+  // PNG/JPG decode using the browser's native image decoder.
+  //   Java side: ByteBuffer loadJni(long[] out, byte[] data, int off, int len)
+  //   `out` is `long[3]`:  out[0]=handle, out[1]=width, out[2]=height
+  //   Returns a ByteBuffer of width*height*4 RGBA bytes, or null on failure.
+  // We use createImageBitmap → OffscreenCanvas → getImageData to get the
+  // pixels. JS shadow is attached so glTexImage2D upload is one bulk copy.
   async Java_arc_graphics_Pixmap_loadJni(lib, handleOut, data, off, len) {
-    const ByteBuffer = await lib.java.nio.ByteBuffer;
-    // 1×1 transparent placeholder; Pixmap reads width/height from this buffer
-    // size indirectly through its own load() path, so keep size = 4 (1 RGBA).
-    const buf = await ByteBuffer.allocateDirect(4);
-    const handle = allocHandle();
-    if (handleOut) {
-      try { handleOut[0] = handle; } catch {}
-      if (typeof handleOut.put === 'function') {
-        try { await handleOut.put(0, handle); } catch {}
+    try {
+      const offset = off | 0, length = len | 0;
+
+      // Get the encoded bytes into a JS Uint8Array. Fast path: if CheerpJ
+      // already gave us a typed-array view of the Java byte[], slice it.
+      let bytes;
+      if (data && ArrayBuffer.isView(data)) {
+        bytes = new Uint8Array(data.buffer, data.byteOffset + offset, length);
+      } else if (data && 'length' in data) {
+        bytes = new Uint8Array(length);
+        for (let i = 0; i < length; i++) bytes[i] = data[offset + i] & 0xff;
+      } else {
+        return null;
       }
+
+      // Decode (PNG / JPG / WebP — whatever the browser supports).
+      const blob = new Blob([bytes]);
+      const bitmap = await createImageBitmap(blob);
+      const w = bitmap.width, h = bitmap.height;
+
+      // Read pixels via OffscreenCanvas 2D context.
+      const canvas = new OffscreenCanvas(w, h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      bitmap.close?.();
+
+      // Allocate the Java ByteBuffer and attach a JS shadow filled with the
+      // decoded RGBA pixels. Mindustry uploads this via glTexImage2D, whose
+      // shim reads through nioBufferToBytes → __bufShadows.
+      const ByteBuffer = await lib.java.nio.ByteBuffer;
+      const buf = await ByteBuffer.allocateDirect(w * h * 4);
+      const shadow = new Uint8Array(w * h * 4);
+      shadow.set(imageData.data);
+      try { bufShadows.set(buf, shadow); } catch {}
+
+      // Write handle + dimensions into the long[3].
+      try {
+        handleOut[0] = allocHandle();
+        handleOut[1] = w;
+        handleOut[2] = h;
+      } catch {}
+
+      return buf;
+    } catch (e) {
+      console.warn('[Pixmap.loadJni] decode failed:', e && e.message);
+      return null; // Mindustry will throw a clean "couldn't load" error per-asset.
     }
-    return buf;
   },
 
   async Java_arc_graphics_Pixmap_free(lib, handle) {
