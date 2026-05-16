@@ -104,6 +104,67 @@ const bufferNatives = {
   async Java_arc_graphics_Pixmap_getFailureReason(lib) {
     return '';
   },
+
+  // FreeType natives. Arc checks the return of `initFreeTypeJni` against 0 to
+  // detect failure. Returning any non-zero long keeps it happy. Glyph
+  // rendering will fall through to our auto-stub no-ops downstream, so text
+  // will render invisibly — but the game continues. Real FreeType-in-browser
+  // is a follow-up (opentype.js or harfbuzzjs would be the libs to bind).
+  async Java_arc_freetype_FreeType_initFreeTypeJni(lib) {
+    return allocHandle();
+  },
+  async Java_arc_freetype_FreeType_getLastErrorCode(lib) {
+    return 0;
+  },
+
+  // Buffers.copyJni overloads. Without these the mesh upload path goes to our
+  // auto-stub which silently drops the copy → WebGL sees an empty VBO → every
+  // glDrawElements logs "Insufficient buffer size". Implement enough overloads
+  // to cover the common cases; fall through to a generic loop for the rest.
+  //
+  // Signatures (from javap):
+  //   void copyJni(Buffer src, int srcOff, Buffer dst, int dstOff, int count)
+  //   void copyJni(float[] src, Buffer dst, int dstOff, int numFloats)
+  //   void copyJni(byte[]  src, int srcOff, Buffer dst, int dstOff, int count)
+  //   void copyJni(short[] src, int srcOff, Buffer dst, int dstOff, int count)
+  //   void copyJni(int[]   src, int srcOff, Buffer dst, int dstOff, int count)
+  //   void copyJni(float[] src, int srcOff, Buffer dst, int dstOff, int count)
+  async Java_arc_util_Buffers_copyJni(lib, ...args) {
+    // CheerpJ's JNI dispatch hands us overload variants through the same name;
+    // distinguish by argument count and type.
+    try {
+      // 5-arg variant: (src, srcOff, dst, dstOff, count) — src is array or Buffer.
+      // 4-arg variant: (float[] src, dst, dstOff, numFloats).
+      let src, srcOff, dst, dstOff, count;
+      if (args.length === 5) {
+        [src, srcOff, dst, dstOff, count] = args;
+      } else if (args.length === 4) {
+        [src, dst, dstOff, count] = args;
+        srcOff = 0;
+      } else {
+        return;
+      }
+      if (!src || !dst) return;
+      // Read source element value at index i (handles JS arrays, Java arrays
+      // via indexed access, and NIO buffers via get(i)).
+      const readSrc = async (i) => {
+        if (typeof src.get === 'function') {
+          try { return await src.get(srcOff + i); } catch {}
+        }
+        return src[srcOff + i];
+      };
+      // Write to dst.put(absoluteIndex, value).
+      for (let i = 0; i < (count | 0); i++) {
+        const v = await readSrc(i);
+        if (typeof dst.put === 'function') {
+          try { await dst.put(dstOff + i, v); continue; } catch {}
+        }
+        try { dst[dstOff + i] = v; } catch {}
+      }
+    } catch (e) {
+      console.warn('[copyJni] failed:', e?.message);
+    }
+  },
 };
 
 const soloudStubs = {
