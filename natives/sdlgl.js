@@ -68,6 +68,18 @@ const I32 = (b) => asTypedArray(b, Int32Array);
 const U32 = (b) => asTypedArray(b, Uint32Array);
 const U8  = (b) => asTypedArray(b, Uint8Array);
 
+// Write a single int to a Java IntBuffer or int[] at index `i`. NIO buffers
+// have no JS-indexed setter (`buf[i] = v` is a no-op on them), so we have to
+// call `.put(i, v)` through the CheerpJ bridge. Falls back to direct indexing
+// for plain Java int[].
+async function bufPutInt(buf, i, val) {
+  if (!buf) return;
+  if (typeof buf.put === 'function') {
+    try { await buf.put(i | 0, val | 0); return; } catch {}
+  }
+  if ('length' in buf) { try { buf[i | 0] = val | 0; } catch {} }
+}
+
 // ── JNI implementations ───────────────────────────────────────────────────────
 const m = {
   // Returns null on success; any non-null/non-empty return is treated by Arc
@@ -127,24 +139,27 @@ const m = {
   glGetStringi:  async (lib, n, i) => '',
   glGetIntegerv: async (lib, p, out) => {
     const v = gl().getParameter(p);
-    const arr = I32(out);
-    if (arr) {
-      if (typeof v === 'number') arr[0] = v;
-      else if (v && v.length) for (let i = 0; i < Math.min(v.length, arr.length); i++) arr[i] = v[i];
+    if (typeof v === 'number') await bufPutInt(out, 0, v);
+    else if (v && 'length' in v) {
+      const len = out?.capacity ? await out.capacity() : (out?.length || v.length);
+      for (let i = 0; i < Math.min(v.length, len); i++) await bufPutInt(out, i, v[i]);
     }
   },
   glGetFloatv: async (lib, p, out) => {
     const v = gl().getParameter(p);
-    const arr = F32(out);
-    if (arr) {
-      if (typeof v === 'number') arr[0] = v;
-      else if (v && v.length) for (let i = 0; i < Math.min(v.length, arr.length); i++) arr[i] = v[i];
-    }
+    // FloatBuffer: same .put(i, v) pattern.
+    const putOne = async (i, val) => {
+      if (out && typeof out.put === 'function') {
+        try { await out.put(i | 0, +val); return; } catch {}
+      }
+      if (out && 'length' in out) { try { out[i | 0] = +val; } catch {} }
+    };
+    if (typeof v === 'number') await putOne(0, v);
+    else if (v && 'length' in v) for (let i = 0; i < v.length; i++) await putOne(i, v[i]);
   },
   glGetBooleanv: async (lib, p, out) => {
     const v = gl().getParameter(p);
-    const arr = U8(out);
-    if (arr) arr[0] = v ? 1 : 0;
+    await bufPutInt(out, 0, v ? 1 : 0);
   },
 
   // ── Textures ───────────────────────────────────────────────────────────────
@@ -224,7 +239,7 @@ const m = {
   },
   glGetProgramiv: async (lib, p, pname, out) => {
     const v = gl().getProgramParameter(reg.program.get(p), pname);
-    const arr = I32(out); if (arr) arr[0] = typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0);
+    await bufPutInt(out, 0, typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0));
   },
   glGetProgramInfoLog: async (lib, p) => gl().getProgramInfoLog(reg.program.get(p)) || '',
   glGetActiveAttrib: async (lib, p, i) => {
@@ -274,14 +289,7 @@ const m = {
   },
   glGetShaderiv: async (lib, s, pname, out) => {
     const v = gl().getShaderParameter(reg.shader.get(s), pname);
-    const intVal = typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0);
-    // Try direct index assignment AND a couple of other paths so whichever
-    // CheerpJ wrapper representation `out` actually is, at least one write
-    // hits the real Java memory.
-    if (out) {
-      try { out[0] = intVal; } catch {}
-      if (typeof out.set === 'function') { try { out.set(0, intVal); } catch {} }
-    }
+    await bufPutInt(out, 0, typeof v === 'boolean' ? (v ? 1 : 0) : (v || 0));
   },
   glGetShaderInfoLog: async (lib, s) => gl().getShaderInfoLog(reg.shader.get(s)) || '',
   glGetShaderPrecisionFormat: async () => {},
@@ -338,10 +346,9 @@ const m = {
 
   // ── Vertex array objects (WebGL2) ──────────────────────────────────────────
   glGenVertexArrays: async (lib, n, out) => {
-    const arr = I32(out);
     for (let i = 0; i < n; i++) {
       const id = reg.vao.add(gl().createVertexArray?.());
-      if (arr) arr[i] = id;
+      await bufPutInt(out, i, id);
     }
   },
   glDeleteVertexArrays: async (lib, n, ids) => {
