@@ -53,7 +53,13 @@ function asTypedArray(buf, ctor = Uint8Array) {
   if (buf instanceof ctor) return buf;
   if (buf.buffer instanceof ArrayBuffer) return new ctor(buf.buffer, buf.byteOffset || 0);
   if (buf instanceof ArrayBuffer) return new ctor(buf);
-  if (Array.isArray(buf) || ('length' in buf && typeof buf[0] === 'number')) return new ctor(buf);
+  // For Java arrays (CheerpJ wraps these as Array-like objects with .length
+  // and numeric indexing) we MUST return the original, not a copy via
+  // `new ctor(buf)`. Otherwise writes via `result[i] = x` go into a JS-side
+  // copy that's discarded after the JNI call returns, and Java reads the
+  // unmodified original — which silently breaks every glGet*v with an output
+  // array (compile/link status, framebuffer size, etc).
+  if (Array.isArray(buf) || ('length' in buf && typeof buf.length === 'number')) return buf;
   return null;
 }
 
