@@ -122,6 +122,53 @@ const bufferNatives = {
   async Java_arc_freetype_FreeType_getLastErrorCode(lib) {
     return 0;
   },
+  async Java_arc_freetype_FreeType_doneFreeType(lib, h) { /* no-op */ },
+
+  // --- FreeType.Library / Face / Glyph / Bitmap / *Metrics natives -----------
+  //
+  // Arc's FreeType binding treats `long` returns of 0 as failure and `boolean`
+  // returns of false as failure. Without these, font loading throws
+  // "Couldn't load font" partway through `FreeTypeFontGenerator.<init>`. We
+  // return non-zero handles / `true` / non-null ByteBuffers so the generator
+  // walks every glyph and "succeeds" — the resulting font has zero-sized
+  // bitmaps, so all text renders invisibly. Real text rendering is a bigger
+  // follow-up (opentype.js or harfbuzzjs in JS, or shipping a CJ-compiled
+  // FreeType wasm).
+  //
+  // Inner classes mangle as `_00024<InnerClassName>`.
+
+  async Java_arc_freetype_FreeType_00024Library_newMemoryFace(lib, handle, data, dataSize, faceIndex) {
+    return allocHandle();
+  },
+  async Java_arc_freetype_FreeType_00024Library_strokerNew(lib, handle) {
+    return allocHandle();
+  },
+  async Java_arc_freetype_FreeType_00024Face_doneFace(lib, h) {},
+  async Java_arc_freetype_FreeType_00024Face_selectSize(lib, h, strikeIndex) { return true; },
+  async Java_arc_freetype_FreeType_00024Face_setCharSize(lib, h, w, hgt, hr, vr) { return true; },
+  async Java_arc_freetype_FreeType_00024Face_setPixelSizes(lib, h, w, hgt) { return true; },
+  async Java_arc_freetype_FreeType_00024Face_loadGlyph(lib, h, idx, flags) { return true; },
+  async Java_arc_freetype_FreeType_00024Face_loadChar(lib, h, ch, flags) { return true; },
+  async Java_arc_freetype_FreeType_00024Face_hasKerning(lib, h) { return false; },
+  async Java_arc_freetype_FreeType_00024Face_getGlyph(lib, h) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Face_getSize(lib, h) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Glyph_strokeBorder(lib, glyph, stroker, inside) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Glyph_toBitmap(lib, glyph, renderMode) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Glyph_getBitmap(lib, h) { return allocHandle(); },
+  async Java_arc_freetype_FreeType_00024Bitmap_getBuffer(lib, h) {
+    const ByteBuffer = await lib.java.nio.ByteBuffer;
+    const buf = await ByteBuffer.allocateDirect(1);
+    try { buf.__jsShadow = new Uint8Array(1); } catch {}
+    return buf;
+  },
+  // Stroker / Glyph cleanup
+  async Java_arc_freetype_FreeType_00024Stroker_done(lib, h) {},
+  async Java_arc_freetype_FreeType_00024Glyph_done(lib, h) {},
+
+  // Default metrics — zero is fine for most queries (no kerning, no advance).
+  // The auto-stub already returns 0, but we add explicit entries so future
+  // tuning is in one place rather than scattered.
+  // (Falling through to the proxy auto-stub is also OK; left here as docs.)
 
   // Buffers.copyJni overloads. Without these the mesh upload path goes to our
   // auto-stub which silently drops the copy → WebGL sees an empty VBO → every
