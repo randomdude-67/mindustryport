@@ -227,9 +227,18 @@ const methods = {
       const fps = state.frameCount - (state.lastFrameCount || 0);
       const drawsPerSec = (state.drawCalls || 0) - (state.lastDrawCalls || 0);
       const clearsPerSec = (state.clearCount || 0) - (state.lastClearCount || 0);
+      // FRAMEBUFFER_BINDING (0x8CA6) — null means default framebuffer (canvas).
+      // If non-null at swap time, we never unbound an FBO before swap, which
+      // means draws went off-screen and nothing reaches the canvas.
+      let fbBinding = '?';
+      try {
+        const fb = state.gl && state.gl.getParameter(0x8CA6);
+        fbBinding = fb === null ? 'CANVAS' : 'FBO#' + (fb && fb.constructor ? fb.constructor.name : 'unknown');
+      } catch {}
       console.log('[render] frame ' + state.frameCount + ' (~' + fps + ' fps, '
         + drawsPerSec + ' draws/s, ' + clearsPerSec + ' clears/s, '
         + 'clearColor=' + JSON.stringify(state.lastClearColor || 'unset') + ', '
+        + 'boundFB=' + fbBinding + ', '
         + 'canvas ' + state.width + 'x' + state.height + ')');
       state.lastFrameLog = now;
       state.lastFrameCount = state.frameCount;
