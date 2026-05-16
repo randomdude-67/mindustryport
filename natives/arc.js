@@ -29,7 +29,13 @@ const allocHandle = () => nextHandle++;
 const bufferNatives = {
   async Java_arc_util_Buffers_newDisposableByteBuffer(lib, capacity) {
     const ByteBuffer = await lib.java.nio.ByteBuffer;
-    return await ByteBuffer.allocateDirect(capacity | 0);
+    const buf = await ByteBuffer.allocateDirect(capacity | 0);
+    // Attach a JS-side shadow Uint8Array so sdlgl.js can hand it directly to
+    // gl.bufferData / gl.texImage2D without an async per-byte read. copyJni
+    // mirrors writes into this shadow so the JS view stays in sync with the
+    // Java NIO buffer.
+    try { buf.__jsShadow = new Uint8Array(capacity | 0); } catch {}
+    return buf;
   },
   async Java_arc_util_Buffers_freeMemory(lib, buf) {
     // No-op: GC will collect when the Java reference is dropped.
@@ -153,13 +159,18 @@ const bufferNatives = {
         }
         return src[srcOff + i];
       };
-      // Write to dst.put(absoluteIndex, value).
+      // Write to dst.put(absoluteIndex, value) AND mirror into the JS shadow.
+      const shadow = dst.__jsShadow;
       for (let i = 0; i < (count | 0); i++) {
         const v = await readSrc(i);
         if (typeof dst.put === 'function') {
-          try { await dst.put(dstOff + i, v); continue; } catch {}
+          try { await dst.put(dstOff + i, v); } catch {}
+        } else {
+          try { dst[dstOff + i] = v; } catch {}
         }
-        try { dst[dstOff + i] = v; } catch {}
+        if (shadow) {
+          try { shadow[dstOff + i] = v & 0xff; } catch {}
+        }
       }
     } catch (e) {
       console.warn('[copyJni] failed:', e?.message);

@@ -80,6 +80,44 @@ async function bufPutInt(buf, i, val) {
   if ('length' in buf) { try { buf[i | 0] = val | 0; } catch {} }
 }
 
+// Read a Java NIO ByteBuffer's bytes into a Uint8Array suitable for WebGL.
+// CheerpJ NIO buffers have `capacity()` and `get(i)` instead of `.length` /
+// indexed access, and they're opaque to TypedArray construction. Our fast
+// path is the `__jsShadow` Uint8Array we attach in `newDisposableByteBuffer`
+// (see natives/arc.js) — when present, we hand WebGL the same memory we
+// already maintain in JS. The slow path is a `get(i)` loop through the
+// CheerpJ bridge, which is correct but byte-by-byte async.
+async function nioBufferToBytes(buf, hintedSize) {
+  if (!buf) return null;
+  if (buf instanceof Uint8Array) return buf;
+  if (ArrayBuffer.isView(buf)) return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (buf instanceof ArrayBuffer) return new Uint8Array(buf);
+  // Fast path: JS-side shadow attached in newDisposableByteBuffer.
+  if (buf.__jsShadow instanceof Uint8Array) {
+    return hintedSize ? buf.__jsShadow.subarray(0, hintedSize | 0) : buf.__jsShadow;
+  }
+  // Java int[]/byte[] arrays expose `.length` + indexed access directly.
+  if ('length' in buf && typeof buf.length === 'number' && !buf.capacity) {
+    const out = new Uint8Array(buf.length);
+    for (let i = 0; i < buf.length; i++) out[i] = buf[i] & 0xff;
+    return out;
+  }
+  // Slow path: NIO Buffer via CheerpJ bridge. Determine size, then loop.
+  let cap = 0;
+  try {
+    if (typeof buf.capacity === 'function') cap = (await buf.capacity()) | 0;
+  } catch {}
+  if (!cap && hintedSize) cap = hintedSize | 0;
+  if (!cap) return null;
+  const out = new Uint8Array(cap);
+  if (typeof buf.get === 'function') {
+    for (let i = 0; i < cap; i++) {
+      try { out[i] = (await buf.get(i)) & 0xff; } catch { break; }
+    }
+  }
+  return out;
+}
+
 // ── JNI implementations ───────────────────────────────────────────────────────
 const m = {
   // Returns null on success; any non-null/non-empty return is treated by Arc
@@ -194,11 +232,14 @@ const m = {
   glBindBuffer: async (lib, t, id) => gl().bindBuffer(t, id ? reg.buffer.get(id) : null),
   glIsBuffer: async (lib, id) => gl().isBuffer(reg.buffer.get(id) || null),
   glBufferData: async (lib, target, size, data, usage) => {
-    if (data) gl().bufferData(target, asTypedArray(data), usage);
-    else gl().bufferData(target, size, usage);
+    if (!data) { gl().bufferData(target, size | 0, usage); return; }
+    const bytes = await nioBufferToBytes(data, size);
+    gl().bufferData(target, bytes || new Uint8Array(size | 0), usage);
   },
   glBufferSubData: async (lib, target, offset, size, data) => {
-    if (data) gl().bufferSubData(target, offset, asTypedArray(data));
+    if (!data) return;
+    const bytes = await nioBufferToBytes(data, size);
+    if (bytes) gl().bufferSubData(target, offset, bytes);
   },
   glGetBufferParameteriv: async () => {},
 
