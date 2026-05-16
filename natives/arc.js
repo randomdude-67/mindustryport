@@ -216,9 +216,28 @@ const bufferNatives = {
       const srcSync = src && 'length' in src && typeof src.length === 'number'
                     && typeof src.get !== 'function';
       const n = count | 0;
+      // One-time diagnostic so we know what path real copyJni calls take.
+      if (!globalThis.__copyJniDiag) {
+        globalThis.__copyJniDiag = { fast: 0, slow: 0 };
+      }
+      const d = globalThis.__copyJniDiag;
       if (shadow && srcSync) {
+        d.fast++;
+        if (d.fast + d.slow < 8 || (d.fast + d.slow) % 200 === 0) {
+          console.log('[copyJni] fast', { count: n, fast: d.fast, slow: d.slow,
+            shadowLen: shadow.length, srcLen: src.length });
+        }
         for (let i = 0; i < n; i++) shadow[dstOff + i] = src[srcOff + i] & 0xff;
         return;
+      }
+      d.slow++;
+      if (d.fast + d.slow < 8 || (d.fast + d.slow) % 200 === 0) {
+        console.log('[copyJni] SLOW', { count: n, fast: d.fast, slow: d.slow,
+          dstHasShadow: !!shadow,
+          srcHasLength: src && 'length' in src,
+          srcLengthType: src && typeof src.length,
+          srcHasGet: src && typeof src.get === 'function',
+          srcCtorName: src && src.constructor && src.constructor.name });
       }
       // Fallback: async bridge reads/writes (slow but correct).
       for (let i = 0; i < n; i++) {
