@@ -232,19 +232,26 @@ const m = {
   glDeleteShader: async (lib, id) => { gl().deleteShader(reg.shader.get(id)); reg.shader.remove(id); },
   glIsShader: async (lib, id) => gl().isShader(reg.shader.get(id) || null),
   glShaderSource: async (lib, id, src) => {
-    // Arc ships shaders with `#version 130/140/150/330` (desktop GL) but uses
-    // `in`/`out` qualifiers that require `#version 300 es` under WebGL 2's
-    // GLSL ES compiler. Rewrite the version directive, force `precision`
-    // qualifiers (mandatory in GLSL ES), and tag the shader stage so the
-    // shader can branch on it if needed. Native drivers tolerate the
-    // mismatch; WebGL is strict.
+    // Arc shaders target desktop GLSL (`#version 130/140/330`) but use
+    // `in`/`out` qualifiers that require GLSL ES 3.00 under WebGL 2. The
+    // GLSL ES compiler is also stricter about default precisions and a few
+    // deprecated builtins. Strip any existing #version, then ALWAYS prepend
+    // a clean GLSL ES 3.00 header with default precisions — simpler and
+    // more robust than trying to match-and-insert after the existing line.
     let s = String(src);
-    s = s.replace(/^\s*#version\s+\d+(\s+\w+)?\s*$/m, '#version 300 es');
-    if (!/^\s*#version\s+/m.test(s)) s = '#version 300 es\n' + s;
-    // Insert default precisions right after the #version line if missing.
-    if (!/precision\s+(highp|mediump|lowp)\s+float/.test(s)) {
-      s = s.replace(/(#version[^\n]*\n)/, '$1precision highp float;\nprecision highp int;\n');
-    }
+    s = s.replace(/^\s*#version[^\r\n]*\r?\n?/m, '');
+    const header =
+      '#version 300 es\n' +
+      'precision highp float;\n' +
+      'precision highp int;\n' +
+      'precision highp sampler2D;\n' +
+      'precision highp samplerCube;\n';
+    s = header + s;
+    // GLSL ES 3.00 removed `texture2D` / `textureCube` — they're spelled
+    // `texture(sampler, uv)` now. Harmless for shaders that already use the
+    // new name.
+    s = s.replace(/\btexture2D\b/g, 'texture');
+    s = s.replace(/\btextureCube\b/g, 'texture');
     return gl().shaderSource(reg.shader.get(id), s);
   },
   glCompileShader: async (lib, id) => gl().compileShader(reg.shader.get(id)),

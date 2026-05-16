@@ -67,6 +67,14 @@ PATCHES = [
         "DesktopLauncher.checkJavaVersion -> immediate return",
         "MINDUSTRY_FRESHLY_DOWNLOADED",
     ),
+    (
+        "Mindustry.jar",
+        "arc/backend/sdl/SdlApplication.class",
+        b"\x2a\xb4\x00\x21\xb4\x00\x9e\xc6\x00\x58",  # aload_0; getfield config; getfield windowIconPaths; ifnull 95
+        b"\xb1\xb4\x00\x21\xb4\x00\x9e\xc6\x00\x58",  # return; dead bytes
+        "SdlApplication.initIcon -> no-op (window icon irrelevant in browser, Pixmap.load is unimplemented)",
+        "MINDUSTRY_FRESHLY_DOWNLOADED",
+    ),
     # arc/util/OS.class and arc/util/SharedLibraryLoader.class are present in
     # BOTH Mindustry.jar AND dependencies.jar. The classpath order is
     # `/app/override:/app/Mindustry.jar:/app/dependencies.jar`, so the copy in
